@@ -1,0 +1,3385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Molecular Universe</title>
+  <!-- Google Fonts: 科技风英文字体 + 中文字体 -->
+  <link href="https://fonts.googleapis.com/css?family=Orbitron:700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=JetBrains+Mono:400,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Noto+Sans+SC:400,700&display=swap" rel="stylesheet">
+  <!-- Three.js,  D3.js , SmilesDrawer-->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script> -->
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- <script src="https://unpkg.com/three/examples/jsm/controls/OrbitControls.js"></script> -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/smiles-drawer@1.0.10/dist/smiles-drawer.min.js"></script> -->
+  <script src="https://unpkg.com/smiles-drawer@1.2.0/dist/smiles-drawer.min.js"></script>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      background: radial-gradient(ellipse at 60% 40%, #0a0e24 0%, #000 100%);
+      color: #eaf6ff;
+      overflow: hidden;
+      transition: background 0.4s, color 0.4s;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .middle-container {
+      display: flex;
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      width: 100vw;
+      height: 100%;
+      /* overflow-y: auto; */
+      background: transparent;
+    }
+
+    body.light {
+      background: radial-gradient(ellipse at 60% 40%, #f7f7fa 0%, #eaf6ff 100%);
+      color: #222;
+    }
+
+    /* 面板样式 */
+    .panel {
+      min-width: 220px;
+      max-width: 260px;
+      padding: 0 0.7rem;
+      background: rgba(10, 14, 36, 0.92);
+      box-shadow: 0 0 32px #1a1a2a44;
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+      height: 100%;
+      overflow-y: auto;
+      transition: background 0.4s, color 0.4s;
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      z-index: 999;
+      overflow-x: hidden;
+      /* position: relative; */
+      /* height: 100vh; */
+    }
+
+    body.light .panel {
+      background: rgba(255, 255, 255, 0.92);
+      color: #222;
+    }
+
+    /* 图例底部 */
+    #legend-bar {
+      margin-top: auto;
+      /* position: static; */
+      width: fit-content;
+      height: fit-content;
+      background: rgba(255, 255, 255, 0.98);
+      opacity: 0.95;
+      padding: 0.53em 1.2em;
+      font-family: 'Lato', Arial, sans-serif;
+      font-size: 1rem;
+      color: #6c4bdb;
+      box-shadow: 0 2px 16px #e39ff644;
+      display: flex;
+      align-items: center;
+      gap: 1.0em;
+      border: 1.5px solid #eaeaea;
+      pointer-events: auto;
+      justify-content: center;
+      z-index: 3050;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #e39ff6 #f7f7fa;
+    }
+
+    body.dark #legend-bar {
+      background: rgba(30, 20, 40, 0.98);
+      color: #eaf6ff;
+      border: none;
+      box-shadow: 0 2px 16px #6c4bdb44;
+    }
+
+    #legend-bar::-webkit-scrollbar {
+      height: 3px;
+      background: #f7f7fa;
+    }
+
+    #legend-bar::-webkit-scrollbar-thumb {
+      background: #e39ff6;
+      border-radius: 8px;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      border-radius: 50%;
+      vertical-align: middle;
+      border: 2px solid #fff;
+      width: 16px;
+      height: 16px;
+      box-shadow: 0 1px 4px #e39ff622;
+    }
+
+    .legend-label {
+      font-size: 0.80em;
+      margin-right: 0.8em;
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      color: #6c4bdb;
+      background: #f7f7fa;
+      border-radius: 6px;
+      padding: 0.08em 0.5em;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    body.dark .legend-label {
+      color: #eaf6ff;
+      background: #18182a;
+    }
+
+
+    /* 问号提示按钮 */
+    .help-btn {
+      background: #e39ff6;
+      color: #fff;
+      border-radius: 50%;
+      width: 1.5em;
+      height: 1.5em;
+      font-size: 1.25em;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #e39ff644;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      overflow: visible;
+    }
+
+    .help-btn:hover {
+      background: #6c4bdb;
+    }
+
+    .help-popover {
+      position: fixed;
+      left: 50%;
+      bottom: 100px;
+      top: 100px;
+      transform: translateX(-50%);
+      background: #fff;
+      color: #6c4bdb;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px #e39ff644;
+      padding: 1.1em 1.7em;
+      font-size: 1.08em;
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      z-index: 6000;
+      border: 1.5px solid #eaeaea;
+      display: none;
+      min-width: 260px;
+      max-width: 80vw;
+      overflow: auto;
+      text-align: center;
+      opacity: 93;
+
+    }
+
+    body.dark .help-popover {
+      background: #18182a;
+      color: #eaf6ff;
+      border: 1.5px solid #6c4bdb;
+    }
+
+    /* 画布背景优化 */
+    .main-3d-canvas,
+    .main-3d-canvas.single {
+      background: #f7f7fa !important;
+      border-radius: 0;
+      box-shadow: 0 2px 16px #e39ff622;
+    }
+
+    body.dark .main-3d-canvas,
+    body.dark .main-3d-canvas.single {
+      background: #18182a !important;
+    }
+
+    /* 标签层样式 */
+    #label-layer,
+    .label-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .point-label {
+      position: absolute;
+      /* 必须加 */
+      font-size: 0.82rem;
+      color: #6c4bdbcc;
+      background: rgba(255, 255, 255, 0.82);
+      opacity: 0.7;
+      padding: 1px 7px;
+      border-radius: 8px;
+      white-space: nowrap;
+      text-shadow: none;
+      transform: translate(0%, 0%);
+      pointer-events: none;
+      border: 1px solid #eaeaea;
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      font-weight: 700;
+      z-index: 11;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    body.dark .point-label {
+      color: #eaf6ff;
+      background: rgba(10, 14, 36, 0.85);
+      text-shadow: 0 0 6px #000;
+      border: none;
+    }
+
+    .tag {
+      background: linear-gradient(135deg, #f7f7fa 60%, #eaf6ff 100%);
+      color: #4a3fa7;
+      border-radius: 18px;
+      padding: 0.18rem 0.95rem;
+      font-size: 1.01rem;
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      opacity: 0.93;
+      margin-bottom: 0.2rem;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+      cursor: pointer;
+      font-weight: 600;
+      border: 1.5px solid #e3e3f6;
+      box-shadow: 0 1px 4px #e39ff622;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tag.selected,
+    .tag:hover {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      color: #fff;
+      border: 1.5px solid #bbaaff;
+      opacity: 1;
+      box-shadow: 0 2px 8px #e39ff644;
+    }
+
+    /* 右侧分子字符串和学名字体统一 */
+    .smiles-label {
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      font-size: 1.13rem;
+      color: #4a3fa7;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 10px;
+      padding: 0.22rem 0.7rem;
+      margin-bottom: 0.5rem;
+      display: inline-block;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border: 1.5px solid #eaeaea;
+      box-shadow: 0 1px 4px #e39ff622;
+    }
+
+    .iupac-label {
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      font-size: 1.08rem;
+      color: #e39ff6;
+      margin-bottom: 0.7rem;
+      display: block;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      font-size: 1.20rem;
+      color: #6c4bdb;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.3rem;
+      margin-top: 0.3rem;
+      text-align: center;
+      text-shadow: 0 2px 8px #e39ff633;
+    }
+
+    /* 2D分子图白底 */
+    .mol2d-canvas,
+    .sim-mol2d {
+      background: #fff !important;
+      border-radius: 16px;
+      margin-bottom: 0.7rem;
+      box-shadow: 0 0 12px #e39ff633;
+      display: block;
+      border: 1px solid #eaeaea;
+    }
+
+    .sim-mol2d {
+      width: 38px;
+      height: 28px;
+      border-radius: 6px;
+      margin-right: 0.3em;
+      display: inline-block;
+      vertical-align: middle;
+      background: #fff !important;
+    }
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      background: #18182a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #6c4bdb88;
+      border-radius: 8px;
+    }
+
+    #overview-modal {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 3000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      background: rgba(10, 14, 36, 0.55);
+      backdrop-filter: blur(6px);
+      transition: background 0.3s;
+      padding-top: 90px;
+    }
+
+    #overview-modal svg {
+      margin-top: 0;
+      margin-bottom: 40px;
+      background: #fff !important;
+    }
+
+    body.light #overview-modal {
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .section-title {
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      font-size: 1.08rem;
+      color: #6c4bdb;
+      margin: 1.1rem 0 0.4rem 0;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    label,
+    .label {
+      font-size: 1rem;
+      color: #6c4bdb;
+      margin-bottom: 0.2rem;
+      font-weight: 700;
+    }
+
+    /* Tab样式 */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #e39ff6;
+      margin-bottom: 0.7em;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.5em 0;
+      background: none;
+      border: none;
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      font-size: 1.02rem;
+      color: #6c4bdb;
+      cursor: pointer;
+      border-bottom: 2.5px solid transparent;
+      transition: border 0.2s, color 0.2s;
+    }
+
+    .tab-btn.active {
+      color: #ff5e7e;
+      border-bottom: 2.5px solid #ff5e7e;
+      background: #f7f7fa22;
+    }
+
+    select,
+    input[type="text"],
+    .multi-select {
+      border: 1.5px solid #e39ff6;
+      border-radius: 8px;
+      background: #fff;
+      color: #6c4bdb;
+      padding: 0.25em 0.7em;
+      margin-bottom: 0.5em;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    body.dark select {
+      background: #18182a;
+      color: #eaf6ff;
+      border: 1.5px solid #6c4bdb;
+    }
+
+    button,
+    .copy-btn {
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      color: #fff;
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      font-size: 1.02rem;
+      font-weight: 700;
+      padding: 0.5em 1.0em;
+      margin-bottom: 0.5em;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #e39ff622;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    button:hover,
+    .copy-btn:hover {
+      background: #ff5e7e;
+      color: #fff;
+    }
+
+    .d3-tooltip {
+      pointer-events: none;
+      position: absolute;
+      z-index: 1000;
+    }
+
+    /* 标签云 */
+    .tag-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin: 0.5rem 0 0.7rem 0;
+      align-items: center;
+      /*justify-content: flex-start;*/
+      border-radius: 12px;
+      background: #f7f7fa;
+      padding: 0.3em 0.2em;
+      min-height: 5.0em;
+      max-height: 9.0em;
+      overflow-y: auto;
+      opacity: 0.93;
+      box-shadow: 0 1px 4px #e39ff622;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tag {
+      background: linear-gradient(135deg, #f7f7fa 60%, #eaf6ff 100%);
+      color: #4a3fa7;
+      border-radius: 12px;
+      padding: 0.18rem 0.95rem;
+      font-size: 0.80rem;
+      font-family: 'JetBrains Mono', 'Orbitron', 'Noto Sans SC', Arial, sans-serif;
+      opacity: 0.93;
+      margin-bottom: 0.2rem;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+      cursor: pointer;
+      font-weight: 600;
+      border: 1.5px solid #e3e3f6;
+      box-shadow: 0 1px 4px #e39ff622;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tag.selected,
+    .tag:hover {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      color: #fff;
+      border: 1.5px solid #bbaaff;
+      opacity: 1;
+      box-shadow: 0 2px 8px #e39ff644;
+    }
+
+    body.dark .tag-cloud {
+      background: #18182a;
+      color: #eaf6ff;
+    }
+
+    body.dark .tag {
+      background: linear-gradient(135deg, #18182a 60%, #24243a 100%);
+      color: #eaf6ff;
+      border: 1.5px solid #6c4bdb;
+    }
+
+    body.dark .tag.selected,
+    body.dark .tag:hover {
+      background: linear-gradient(90deg, #6c4bdb 0%, #e39ff6 100%);
+      color: #fff;
+      border: 1.5px solid #bbaaff;
+      box-shadow: 0 2px 8px #6c4bdb44;
+    }
+
+    .main-3d-canvas {
+      flex: 1 1 0;
+      min-height: 50px;
+      min-width: 50px;
+      width: 100%;
+      height: 100%;
+      background: #f7f7fa !important;
+      border-radius: 0;
+      box-shadow: 0 2px 16px #e39ff622;
+      position: relative;
+      transition: all 0.3s;
+    }
+
+    body.dark .main-3d-canvas {
+      background: #18182a !important;
+    }
+
+    /* Cooccurrence */
+    #cooccurrence-ranking {
+      list-style: none;
+      padding: 0;
+      margin: 0.5em 0 1em 0;
+    }
+
+    #cooccurrence-ranking li {
+      cursor: pointer;
+      padding: 0.3em 0.5em;
+      border-radius: 8px;
+      background: #f7f7fa;
+      /* 浅色主题 */
+      margin-bottom: 0.2em;
+      transition: background 0.18s, color 0.18s;
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      font-size: 0.80rem;
+    }
+
+    body.dark #cooccurrence-ranking li {
+      background: #18182a;
+      /* 深色主题 */
+      color: #eaf6ff;
+    }
+
+    #cooccurrence-ranking li:hover {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      color: #fff;
+    }
+
+    #cooccurrence-ranking li.selected {
+      background: #ff5e7e;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    #canvas-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0;
+      gap: 10px;
+      width: 100%;
+      height: 100%;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .styled-range {
+      flex: 1;
+      max-width: 160px;
+      accent-color: #6c4bdb;
+      height: 4px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      margin: 0 0.5em;
+      outline: none;
+      transition: background 0.2s;
+    }
+
+    body.dark .styled-range {
+      accent-color: #e39ff6;
+      background: linear-gradient(90deg, #6c4bdb 0%, #e39ff6 100%);
+    }
+
+    input[type="range"].styled-range::-webkit-slider-runnable-track {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      max-width: 160px;
+      border-radius: 8px;
+      accent-color: #6c4bdb;
+      transition: background 0.2s;
+    }
+
+    input[type="range"].styled-range::-moz-range-track {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      max-width: 160px;
+      border-radius: 8px;
+      accent-color: #6c4bdb;
+      transition: background 0.2s;
+    }
+
+    input[type="range"].styled-range::-ms-fill-lower,
+    input[type="range"].styled-range::-ms-fill-upper {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      max-width: 160px;
+      border-radius: 8px;
+      accent-color: #6c4bdb;
+      transition: background 0.2s;
+    }
+
+    .range-val {
+      font-size: 1.01em;
+      color: #6c4bdb;
+      font-weight: 700;
+      margin: 0 0.5em;
+    }
+
+    body.dark .range-val {
+      color: #e39ff6;
+    }
+
+    #top-navbar {
+      /* position: fixed; */
+      top: 0;
+      left: 0;
+      width: 100vw;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 2px 12px #e39ff622;
+      display: flex;
+      align-items: center;
+      gap: 2em;
+      padding: 0.7em 2em;
+      z-index: 2010;
+    }
+
+    body.dark #top-navbar {
+      background: rgba(30, 20, 40, 0.97);
+    }
+
+    .nav-btn {
+      font-family: 'JetBrains Mono', 'Orbitron', Arial, sans-serif;
+      font-size: 1.08em;
+      color: #6c4bdb;
+      cursor: pointer;
+      transition: color 0.2s, font-weight 0.2s;
+      padding: 5px 5px;
+      user-select: none;
+      /* 防止误选中文本 */
+      cursor: pointer;
+    }
+
+    .nav-btn.active,
+    .nav-btn[style*="color: rgb(255, 94, 126)"] {
+      color: #ff5e7e !important;
+      font-weight: 700 !important;
+    }
+
+    #spa-main {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      background: transparent;
+      left: auto;
+      /* right:auto; */
+    }
+
+    #spa-home,
+    #spa-overview,
+    #spa-compare,
+    #spa-search {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow-y: auto;
+      padding: 0 0.2em;
+    }
+
+    .main-3d {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 0;
+      min-height: 0;
+      min-width: 0;
+      /* width: 100%; */
+      height: 100%;
+      align-items: stretch;
+      justify-content: flex-start;
+      background: transparent;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #overview-charts {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      overflow-y: auto;
+      padding: 2.2em 2.5em 2.5em 2.5em;
+      box-sizing: border-box;
+      max-width: 1200px;
+      background: transparent;
+    }
+
+    #compare-result {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      /* 一排3个 */
+      gap: 1.0em;
+      align-items: stretch;
+      justify-items: center;
+      padding: 2em 0 1em 0;
+      background: #fff;
+      min-height: 320px;
+    }
+
+    /* 分子对比区卡片 */
+    .compare-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px #e3e3f6;
+      padding: 1em 0.8em 1em 0.8em;
+      min-width: 180px;
+      max-width: 230px;
+      width: 100%;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid #eaeaea;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: box-shadow 0.18s, transform 0.18s;
+    }
+
+    .compare-card:hover {
+      box-shadow: 0 4px 16px #e39ff655;
+      transform: translateY(-2px) scale(1.01);
+      border-color: #e39ff6;
+    }
+
+    .compare-card .tag-cloud.smell {
+      background: #fff;
+      border: none;
+      box-shadow: none;
+      padding: 0.15em 0;
+      margin-bottom: 0.3em;
+      max-height: 300px;
+    }
+
+    .compare-card .tag-cloud.smell .tag {
+      background: #fff !important;
+      color: #6c4bdb !important;
+      /* border: 1.2px solid #e39ff6; */
+      font-size: 0.92em;
+      font-weight: 700;
+      margin: 0 0.1em 0.2em 0.1em;
+      box-shadow: none;
+      border-radius: 8px;
+      padding: 0.08em 0.7em;
+    }
+
+    .compare-card .tag-cloud.feature {
+      background: #fff;
+      border: none;
+      box-shadow: none;
+      padding: 0.15em 0;
+    }
+
+    .compare-card .tag-cloud.feature .tag {
+      background: #fff !important;
+      color: #222 !important;
+      font-size: 0.92em;
+      font-weight: 600;
+      margin: 0 0.1em 0.2em 0.1em;
+      box-shadow: none;
+      border-radius: 8px;
+      padding: 0.08em 0.7em;
+    }
+
+    /* 删除按钮 */
+    .compare-card .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #fff;
+      color: #bbb;
+      border: 1.2px solid #eee;
+      border-radius: 50%;
+      width: 1.7em;
+      height: 1.7em;
+      cursor: pointer;
+      font-size: 1.1em;
+      align-items: center;
+      justify-content: center;
+      display: none;
+      z-index: 2;
+      transition: color 0.18s, border 0.18s;
+    }
+
+    .compare-card:hover .remove-btn {
+      display: flex;
+    }
+
+    .compare-card .remove-btn:hover {
+      color: #ff5e7e;
+      border-color: #ff5e7e;
+      background: #fff;
+    }
+
+    .add-compare-btn {
+      margin-left: 0.5em;
+      background: #6c4bdb;
+      color: #fff;
+      border-radius: 50%;
+      width: 1.5em;
+      height: 1.5em;
+      font-size: 1.1em;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 1px 4px #e39ff622;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .add-compare-btn:hover {
+      background: #ff5e7e;
+    }
+
+    .overview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .overview-table th,
+    .overview-table td {
+      padding: 0.8rem;
+      text-align: left;
+      border: 1px solid #eaeaea;
+      font-size: 0.95rem;
+    }
+
+    .overview-table th {
+      background: #f7f7fa;
+      color: #6c4bdb;
+      font-weight: 700;
+    }
+
+    .overview-table tr:hover {
+      background: #f1f1f1;
+    }
+
+    body.dark .overview-table th {
+      background: #18182a;
+      color: #eaf6ff;
+    }
+
+    body.dark .overview-table tr:hover {
+      background: #24243a;
+    }
+
+    .chart-toolbar {
+      display: flex;
+      gap: 0.8em;
+      margin-bottom: 0.3em;
+      justify-content: flex-start;
+    }
+
+    .sim-list {
+      list-style: none;
+      padding: 0;
+      margin: 0.5em 0 1em 0;
+    }
+
+    .sim-list li {
+      cursor: pointer;
+      padding: 0.3em 0.5em;
+      border-radius: 8px;
+      background: #f7f7fa;
+      /* 浅色主题 */
+      margin-bottom: 0.2em;
+      transition: background 0.18s, color 0.18s;
+      font-family: 'JetBrains Mono', 'Orbitron', monospace;
+      font-size: 0.80rem;
+    }
+
+    body.dark .sim-list li {
+      background: #18182a;
+      /* 深色主题 */
+      color: #eaf6ff;
+    }
+
+    .sim-list li:hover {
+      background: linear-gradient(90deg, #e39ff6 0%, #6c4bdb 100%);
+      color: #fff;
+    }
+
+    body.dark input[type="range"].styled-range::-webkit-slider-runnable-track {
+      background: linear-gradient(90deg, #6c4bdb 0%, #e39ff6 100%);
+    }
+
+    body.dark input[type="range"].styled-range::-moz-range-track {
+      background: linear-gradient(90deg, #6c4bdb 0%, #e39ff6 100%);
+    }
+
+    body.dark input[type="range"].styled-range::-ms-fill-lower,
+    body.dark input[type="range"].styled-range::-ms-fill-upper {
+      background: linear-gradient(90deg, #6c4bdb 0%, #e39ff6 100%);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #e39ff6;
+      border-radius: 8px;
+    }
+
+    body::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* 移动端 */
+    @media (max-width: 900px) {
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .middle-container {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel.left,
+      .panel.right {
+        min-width: 100vw;
+        max-width: 100vw;
+        height: auto;
+        position: static;
+      }
+
+      #spa-main {
+        height: 60vw;
+        min-height: 320px;
+      }
+
+      .help-popover {
+        height: 60vw;
+        overflow: auto;
+        /*display: flex;*/
+      }
+
+      #compare-result {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body class="light">
+  <!-- 顶部菜单栏 -->
+  <div id="top-navbar">
+    <span class="nav-btn" data-page="home" style="font-weight:700;cursor:pointer;">主页</span>
+    <span class="nav-btn" data-page="overview" style="cursor:pointer;">数据概览</span>
+    <span class="nav-btn" data-page="compare" style="cursor:pointer;">分子对比</span>
+    <span class="nav-btn" data-page="search" style="cursor:pointer;">信息查询</span>
+    <button class="nav-btn help-btn" id="help-btn" title="帮助">?</button>
+  </div>
+  <div class="middle-container">
+    <!-- 左侧控制面板 -->
+    <div class="panel left">
+      <h1>Molecular Universe</h1>
+      <h1>分子结构-气味可视化</h1>
+      <!-- 操作面板选项 -->
+      <button class="toggle-theme" id="theme-btn">切换主题</button>
+      <div style="margin-bottom:0.2em;">
+        <label for="dataset-select" style="font-size:0.97em;">数据集选择</label>
+        <select id="dataset-select" style="margin-left:0.5em;">
+          <option value="./data/gs_lf_100.json">100</option>
+          <option value="./data/gs_lf_250.json">250</option>
+          <option value="./data/gs_lf_512.json" selected>512</option>
+          <option value="./data/gs_lf_1024.json">1024</option>
+          <option value="./data/gs_lf_4983.json">4983</option>
+          <!-- github有上传文件限制，本地server可以解开注释，并把相关json文件放在HTML文件同路径中 -->
+          <!--          <option value="gs_lf_2048.json">2048</option>-->
+          <!--          <option value="gs_lf_4096.json">4096</option>-->
+        </select>
+      </div>
+      <div class="section-title">TopN聚焦模式切换</div>
+      <div style="margin-bottom:0.2em;">
+        <div style="display:flex;align-items:center;gap:0.7em;">
+          <input id="topN-range" type="range" min="3" max="50" value="20" step="1" style="flex:1;max-width:160px;"
+            class="styled-range">
+          <span id="topN-val" style="font-size:1.01em;color:#6c4bdb;font-weight:700;margin:0 0.5em;">20</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.7em;margin-top:0.3em;">
+          <button id="focus-topN-btn" class="copy-btn" style="font-size:1.01rem;padding:0.3em 1.1em;">
+            聚焦模式切换
+          </button>
+          <span id="focus-mode-tip" style="font-size:0.97em;color:#aaa;"></span>
+        </div>
+      </div>
+      <div class="section-title">清空筛选</div>
+      <button class="copy-btn" onclick="clearAllFilters()">清空筛选</button>
+      <div class="section-title">降维方式</div>
+      <select id="embedding-select" style="margin-bottom:1em;">
+        <option value="pca">PCA</option>
+        <option value="tsne">t-SNE</option>
+        <option value="umap">UMAP</option>
+      </select>
+      <button id="smiles-toggle-btn" class="copy-btn" style="font-size:1.01rem;padding:0.3em 1.1em;">
+        切换SMILES/散点
+      </button>
+      <!-- 共现排行榜 -->
+      <div class="section-title">共现排行榜</div>
+      <ul id="cooccurrence-ranking"></ul>
+      <!-- 筛选 -->
+      <div class="section-title">气味标签筛选</div>
+      <div id="label-filter" class="tag-cloud"></div>
+      <div class="section-title">特征筛选</div>
+      <div id="feature-filter" class="tag-cloud"></div>
+      <!-- 滑块 -->
+      <div class="section-title">分子量范围</div>
+      <div style="display:flex;align-items:center;gap:0.7em;">
+        <input id="mw-range" type="range" min="0" max="2000" value="1000" step="1" class="styled-range">
+        <span id="mw-range-val" class="range-val">1000</span>
+      </div>
+      <div class="section-title">分子数目上限</div>
+      <div style="display:flex;align-items:center;gap:0.7em;padding-bottom:0.5em;">
+        <input id="mol-limit" type="range" min="10" max="5000" value="1000" step="10" class="styled-range">
+        <span id="mol-limit-range-val" class="range-val">1000</span>
+      </div>
+    </div>
+    <!-- SPA主区（只放主内容区） -->
+    <div id="spa-main">
+      <!-- 主页主内容 -->
+      <div id="spa-home">
+        <div class="main-3d" id="main-3d">
+          <div id="canvas-container">
+          </div>
+
+          <div id="legend-bar"></div>
+        </div>
+
+        <div id="mol-tooltip"
+          style="display:none;position:fixed;z-index:9999;pointer-events:none;color: #6c4bdb;background:rgba(255,255,255,0.98);box-shadow:0 2px 12px #e39ff633;padding: 0.5em 1em;border-radius: 8px;font-size: 0.98em;font-family:'JetBrains Mono','Orbitron';">
+        </div>
+
+      </div>
+      <!-- 数据概览内容 -->
+      <div id="spa-overview" style="display:none;">
+        <!-- 图例底部 -->
+        <div id="overview-charts"></div>
+      </div>
+      <!-- 分子对比内容 -->
+      <div id="spa-compare" style="display:none;">
+        <div class="section-title">分子对比</div>
+        <div id="compare-result"></div>
+      </div>
+      <!-- 信息查询内容 -->
+      <div id="spa-search" style="display:none;">
+        <div class="section-title">信息查询</div>
+        <div style="margin-bottom:1em;display:flex;gap:1em;align-items:center;">
+          <input id="search-input" type="text" placeholder="输入SMILES或标签名" style="width:220px;">
+          <button id="search-btn" class="copy-btn">查询</button>
+        </div>
+        <div id="search-result"></div>
+      </div>
+    </div>
+    <!-- 右侧信息面板 -->
+    <div class="panel right">
+      <div class="section-title">分子详情</div>
+      <div id="mol-info">
+        <div class="smiles-label" id="smiles-label"></div>
+        <button class="copy-btn" id="copy-smiles">复制</button>
+        <div class="iupac-label" id="iupac-label"></div>
+        <canvas id="mol2d" class="mol2d-canvas" width="220" height="160"></canvas>
+        <div class="section-title">气味标签云</div>
+        <div id="tag-cloud" class="tag-cloud"></div>
+        <div class="section-title">分子特征标签云</div>
+        <div id="feature-tag-cloud" class="tag-cloud"></div>
+      </div>
+      <div class="section-title">结构相似推荐</div>
+      <ul class="sim-list" id="structural-sim" style="cursor:pointer;"></ul>
+      <div class="section-title">标签相似推荐</div>
+      <ul class="sim-list" id="label-sim" style="cursor:pointer;"></ul>
+    </div>
+    <!-- 问号弹窗 -->
+    <div class="help-popover" id="help-popover">
+      <b>界面操作说明</b><br>
+      <ul style="text-align:left;font-size:1em;line-height:1.5;">
+        <li><b>顶部菜单栏</b></li>
+        <ul>
+          <li><b>主页</b>：展示两种位置编码方式下的3D分子散点图。每个画布中，鼠标左键拖动旋转，滚轮缩放，点击右下角可以放大。鼠标悬浮在粒子上可查看分子简介。点击粒子可查看分子详情。</li>
+          <li>
+            <b>数据概览</b>：展示138种气味标签对应的标签分子数分布条形图，以及TopN标签下的标签分子数分布条形图、分子标签数分布条形图、标签共现热力图、标签-特征热力图、标签共现和弦图、分子量小提琴图。每个图表支持悬浮提示、放大显示与下载SVG。除分子标签数分布图外，均支持点击筛选。
+          </li>
+          <li><b>分子对比</b>：可对比当前加入已对比分子的结构、标签和特征，点击可跳转至对应分子详情。</li>
+          <li><b>信息查询</b>：支持SMILES全名或标签全名检索分子，点击可跳转至对应分子详情。</li>
+        </ul>
+        <li><b>左侧操作面板</b></li>
+        <ul>
+          <li><b>数据集选择</b>：可切换不同大小的数据集。</li>
+          <li><b>主题切换</b>：可切换浅色/深色主题。</li>
+          <li><b>TopN聚焦模式</b>：可设置高频标签的数量，切换高亮模式。</li>
+          <li><b>清空筛选</b>：可清空当前筛选。</li>
+          <li><b>降维方式</b>：可选择PCA、t-SNE或UMAP降维方式。</li>
+          <li><b>SMILES/散点切换</b>：可切换显示分子SMILES或仅显示分子点。</li>
+          <li><b>共现排行榜</b>：展示气味标签共现/气味+特征标签共现数目排行榜Top12，点击可筛选对应的两个标签。</li>
+          <li><b>气味标签筛选</b>：可选择感兴趣的气味标签进行筛选。</li>
+          <li><b>特征筛选</b>：可选择感兴趣的分子特征进行筛选。</li>
+          <li><b>分子量范围滑块</b>：控制显示分子的最大分子量。</li>
+          <li><b>分子数目上限滑块</b>：控制显示的最大分子数目。</li>
+        </ul>
+        <li><b>右侧信息面板</b></li>
+        <ul>
+          <li><b>分子详情</b>：显示分子SMILES、IUPAC名称、2D结构图、气味标签云和特征标签云。其中气味标签云和特征标签云可点击筛选。点击复制可复制分子SMILES。点击加入对比可将分子加入对比。</li>
+          <li><b>结构相似推荐</b>：展示与当前分子结构相似的5个分子，点击加号可将分子加入对比。</li>
+          <li><b>标签相似推荐</b>：展示与当前分子气味标签相似的5个分子，点击加号可将分子加入对比。</li>
+        </ul>
+      </ul>
+      <b>视觉编码说明</b><br>
+      <ul style="text-align:left;font-size:1em;line-height:1.5;">
+        <li><b>主页视觉编码说明</b></li>
+        <ul>
+          <li><b>点颜色</b>：表示为气味标签。可在左侧切换TopN高频标签模式或全部色彩模式。</li>
+          <ul>
+            <li>当选中标签（特征）的数目为1时，全部红色高亮。</li>
+            <li>当选中标签（特征）的数目大于1时，有其中一种标签（特征）的显示为彩色，包含全部选中标签的标识为红色高亮。</li>
+          </ul>
+          <li><b>点大小</b>：表示分子量大小。</li>
+          <li><b>点坐标</b>：共有基于分子指纹的（结构空间）以及基于分子气味标签的（气味空间）两种方式表示点位置，可选择PCA、t-SNE或UMAP降维方式。</li>
+          <li><b>图例</b>:左侧为点的颜色表示的气味特征，红色边框为当前筛选。中间为分子量大小示意。右侧指示红色为共现。</li>
+        </ul>
+        <li><b>数据概览界面视觉编码说明</b></li>
+        <ul>
+          <li><b>标签分子数分布条形图</b>：每个柱表示TopN/Top138标签下每个气味标签的分子数分布，颜色表示气味标签，和主界面颜色对应，选中的标签颜色变为粉红色。</li>
+          <li><b>分子标签数分布条形图</b>：每个柱表示TopN标签下每个气味标签的分子数分布。</li>
+          <li><b>标签共现热力图</b>：横轴和纵轴均表示气味标签，标签每个格表示TopN标签下气味标签共现次数，两个标签共现次数多颜色深。</li>
+          <li><b>标签-特征热力图</b>：横轴表示特征标签，纵轴表示气味标签，每个格表示TopN标签下特征出现次数，两个标签共现次数多颜色深。</li>
+          <li><b>标签共现和弦图</b>：每个环形分段表示TopN标签下每个气味标签，颜色表示气味标签。每条弦表示Top20标签间的共现关系，弦宽代表共现次数。</li>
+          <li><b>分子量小提琴图</b>：横轴表示气味标签，纵轴表示分子量大小。每个小提琴表示Top20标签下平均分子量分布，颜色表示气味标签。</li>
+        </ul>
+      </ul>
+    </div>
+  </div>
+  <div id="loading-mask"
+    style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:9999;background:rgba(255,255,255,0.7);color:#6c4bdb;font-size:1.5em;align-items:center;justify-content:center;display:flex;">
+    数据加载中...</div>
+  </div>
+  <div id="overview-modal"></div>
+
+
+  <script>
+    // 全局变量
+    let zoomPercent = 100;  // 缩放百分比
+    let showSmiles = false;  // true: 显示SMILES，false: 只显示点
+    // 数据加载
+    let data = null;
+    let molecules = [];
+    let labelNames = [];
+    let similarity = {};
+    let currentEmbeddingType = "fp_coords";
+    let currentEmbedding = "pca";
+    let selectedMol = 0; // 当前选中分子索引,右侧信息面板显示
+    let mwMax = 1000;
+    let molLimit = 1000;
+    let labelFilter = []; //标签筛选的分子
+    let featureFilter = []; //特征筛选的分子
+    let filteredIdx = []; //最大分子数下的分子
+    let theme = "light";
+    let enlargedCanvas = -1; // -1表示无放大，0~5表示放大哪个画布
+    let globalCamera, globalControls;
+    let focusTopNMode = true; // true: 只高亮前N标签，false: 全部彩色
+    let labelPriority = []; // 标签优先级
+    let topN = 20; // 可由输入框或按钮设置
+    let topNLabelIdx = [];
+    let currentPage = "home";
+    let compareList = []; // 用于存储对比分子
+    let renderer, scene, camera, controls, raycaster, mouse, particles, particleData;
+    let currentDataset = './data/gs_lf_512.json';
+
+    // 标签专属颜色生成(旧版颜色)
+    // function generateLabelColors(n) {
+    //   const colors = [];
+    //   for (let i = 0; i < n; ++i) {
+    //     // // 色相均匀分布，饱和度和亮度适中
+    //     // const h = (i * 360 / n + 20) % 360;
+    //     // colors.push(`hsl(${h},68%,58%)`);
+    //     // 色相均匀分布
+    //     const h = Math.round((i * 360 / n));
+    //     colors.push(`hsl(${h},68%,58%)`);
+    //   }
+    //   return colors;
+    // }
+    function generateLabelColors(n) {
+      const colors = [];
+      for (let i = 0; i < n; ++i) {
+        colors.push(d3.interpolateRainbow(i / n));
+      }
+      return colors;
+    }
+    let labelColors = [];
+
+    // 读取数据
+    fetch('./data/gs_lf_512.json')
+      .then(res => res.json())
+      .then(json => {
+        data = json;
+        molecules = data.molecules;
+        labelNames = data.metadata.label_names;
+        similarity = data.similarity_matrix;
+        labelColors = generateLabelColors(labelNames.length);
+        initUI();
+        updateCanvasLayout();
+        setTimeout(() => {
+          updateMolInfo(0);
+        }, 0);
+        renderCooccurrenceRanking();
+        // 先不渲染图表，等切换菜单再显示
+        // renderOverviewCharts();
+
+        // 统计前20高频标签
+        const labelCounts = labelNames.map((name, i) =>
+          molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0)
+        );
+        const labelStats = labelNames.map((name, i) => ({
+          label: name,
+          count: labelCounts[i],
+          idx: i
+        })).sort((a, b) => b.count - a.count);
+        topNLabelIdx = labelStats.slice(0, topN).map(x => x.idx);
+        // 新增：为每个标签分配优先级
+        labelPriority = Array(labelNames.length).fill(9999);
+        labelStats.forEach((obj, rank) => {
+          labelPriority[obj.idx] = rank;
+        });
+        renderAll3D();
+        const mwArr = molecules.map(m => m.properties.molecular_weight);
+        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+        document.getElementById('loading-mask').style.display = 'none';
+      });
+
+    // 主题切换：只切换整体背景和字体，不切换分子画板样式
+    function setThemeClass() {
+      if (theme === "dark") {
+        document.body.classList.remove('light');
+        document.body.classList.add('dark');
+        renderOverviewCharts();
+      } else {
+        document.body.classList.remove('dark');
+        document.body.classList.add('light');
+        renderOverviewCharts();
+      }
+    }
+    function getCooccurLabels() {
+      if (!filteredIdx.length) return [];
+      // 统计每个标签在所有filteredIdx分子中出现的次数
+      const counts = Array(labelNames.length).fill(0);
+      filteredIdx.forEach(idx => {
+        molecules[idx].labels.forEach((v, i) => { if (v) counts[i]++; });
+      });
+      // 如果所有filteredIdx都包含该标签，则为共现
+      return counts.map((c, i) => c === filteredIdx.length ? i : -1).filter(i => i !== -1);
+    }
+    function renderLegend(labelColors, labelNames, mwMin, mwMax) {
+      const legendBar = document.getElementById('legend-bar');
+      let html = `<span style="font-weight:700;font-size:0.80em;">气味</span>`;
+      const cooccurLabels = getCooccurLabels();
+      // 先放所有被选中和共现的标签
+      let specialIdx = Array.from(new Set([...labelFilter, ...cooccurLabels]));
+      // 再补足TopN
+      let showIdx = specialIdx.slice();
+      topNLabelIdx.forEach(i => {
+        if (!showIdx.includes(i)) showIdx.push(i);
+      });
+      // 只截断TopN补充部分
+      let maxShow = 20;
+      if (showIdx.length > maxShow) {
+        let rest = maxShow - specialIdx.length;
+        let extra = topNLabelIdx.filter(i => !specialIdx.includes(i)).slice(0, rest);
+        showIdx = specialIdx.concat(extra);
+        html += `<span style="font-size:0.80em;">...(${topNLabelIdx.length})</span>`;
+      }
+      html += `<div style="display:inline-block;max-width:430px;overflow-x:auto;white-space:nowrap;vertical-align:middle;">`;
+      for (let k = 0; k < showIdx.length; ++k) {
+        let i = showIdx[k];
+        const isCooccur = cooccurLabels.includes(i);
+        const isSelected = labelFilter.includes(i);
+        let dotStyle = `background:${isCooccur ? '#ff5e7e' : (topNLabelIdx.includes(i) ? labelColors[i] : '#bbb')};`;
+        if (isSelected && !isCooccur) dotStyle += 'border:2px solid #ff5e7e;';
+        html += `<span class="legend-dot" style="${dotStyle}"></span>
+      <span class="legend-label" style="${isCooccur ? 'color:#ff5e7e;font-weight:bold;' : isSelected ? 'color:#ff5e7e;font-weight:bold;' : ''}">${labelNames[i]}</span>`;
+      }
+      html += `</div>`;
+      html += `<span style="font-weight:700;font-size:0.80em;">分子量</span>
+  <span class="legend-dot" style="width:10px;height:10px;background:#bbb;"></span>
+  <span style="font-size:0.80em;">${Math.round(mwMin)}</span>
+  <span class="legend-dot" style="width:20px;height:20px;background:#bbb;"></span>
+  <span style="font-size:0.80em;">${Math.round(mwMax)}</span>
+  <span style="margin-left:0.5em;font-size:0.80em;color:#ff5e7e;font-weight:700;">红色分子=共现</span>`;
+      legendBar.innerHTML = html;
+    }
+    //菜单切换
+    function switchPage(page) {
+      currentPage = page;
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.style.color = (btn.dataset.page === page) ? "#ff5e7e" : "#6c4bdb";
+        btn.style.fontWeight = (btn.dataset.page === page) ? "700" : "400";
+      });
+      document.getElementById('spa-home').style.display = (page === "home") ? "block" : "none";
+      document.getElementById('spa-overview').style.display = (page === "overview") ? "block" : "none";
+      document.getElementById('spa-compare').style.display = (page === "compare") ? "block" : "none";
+      document.getElementById('spa-search').style.display = (page === "search") ? "block" : "none";
+      // 页面切换时可根据需要刷新内容
+      if (page === "overview") renderOverviewCharts();
+      if (page === "home") render3D();
+      if (page === "compare") renderComparePage();
+
+      // 只在首次切换到search时绑定一次
+      if (page === "search" && !window._searchBtnBound) {
+        const btn = document.getElementById('search-btn');
+        if (btn) {
+          btn.onclick = function () {
+            const val = document.getElementById('search-input').value.trim();
+            let result = '';
+            if (!val) {
+              result = '<div style="color:#ff5e7e;">请输入SMILES或标签名</div>';
+            } else if (val.includes('C') || val.includes('=') || val.length > 10) {
+              // 简单判断为SMILES
+              const idx = molecules.findIndex(m => m.smiles === val);
+              if (idx !== -1) {
+                const mol = molecules[idx];
+                result = `<div class="overview-table" style="margin-top:1em;">
+                  <table><tr><th>ID</th><th>SMILES</th><th>分子量</th><th>标签</th></tr>
+                  <tr style="cursor:pointer;" onclick="updateMolInfo(${idx});">
+                    <td>${idx}</td>
+                    <td>${mol.smiles}</td>
+                    <td>${mol.properties.molecular_weight}</td>
+                    <td>${mol.labels.map((v, i) => v ? labelNames[i] : '').filter(x => x).join(', ')}</td>
+                  </tr></table></div>`;
+              } else {
+                result = '<div style="color:#ff5e7e;">未找到该SMILES分子</div>';
+              }
+            } else {
+              // 认为是标签名
+              const lid = labelNames.indexOf(val);
+              if (lid !== -1) {
+                const mols = molecules
+                  .map((m, i) => ({ m, i }))
+                  .filter(obj => obj.m.labels[lid])
+                // .slice(0, 10);
+                //不作长度限制
+                result = `<div>标签: ${val}，相关分子数: ${mols.length}</div>
+                              <table class="overview-table"><tr><th>ID</th><th>SMILES</th><th>分子量</th><th>标签</th></tr>
+                              ${mols.map(obj => `<tr style="cursor:pointer;" onclick="updateMolInfo(${obj.i});switchPage('home');">
+                                <td>${obj.i}</td>
+                                <td>${obj.m.smiles}</td>
+                                <td>${obj.m.properties.molecular_weight}</td>
+                                <td>${obj.m.labels.map((v, i) => v ? labelNames[i] : '').filter(x => x).join(', ')}</td>
+                              </tr>`).join('')}
+                              </table>`;
+              } else {
+                result = '<div style="color:#ff5e7e;">未找到该标签</div>';
+              }
+            }
+            document.getElementById('search-result').innerHTML = result;
+          };
+          window._searchBtnBound = true;
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // 控制面板UI初始化
+    function initUI() {
+      // 主题切换
+      document.getElementById('theme-btn').onclick = () => {
+        theme = theme === "dark" ? "light" : "dark";
+        setThemeClass();
+        renderAll3D();
+        updateMolInfo(selectedMol);
+      };
+      // 问号弹窗显示/隐藏
+      document.getElementById('help-btn').onclick = function () {
+        const popover = document.getElementById('help-popover');
+        if (popover.style.display === 'block') {
+          popover.style.display = 'none';
+        } else {
+          popover.style.display = 'block';
+        }
+      };
+      // 点击弹窗外部关闭
+      document.addEventListener('mousedown', function (e) {
+        const popover = document.getElementById('help-popover');
+        const helpBtn = document.getElementById('help-btn');
+        if (popover.style.display === 'block' && !popover.contains(e.target) && e.target !== helpBtn) {
+          popover.style.display = 'none';
+        }
+      });
+      setThemeClass();
+      // 标签筛选（左侧）
+      const labelFilterDiv = document.getElementById('label-filter');
+      labelFilterDiv.innerHTML = '';
+      labelNames.forEach((name, i) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = name;
+        tag.onclick = () => {
+          if (labelFilter.includes(i)) {
+            labelFilter = labelFilter.filter(x => x !== i);
+            tag.classList.remove('selected');
+          } else {
+            labelFilter.push(i);
+            tag.classList.add('selected');
+          }
+          syncLabelFilterUI();
+          render3D();
+        };
+        labelFilterDiv.appendChild(tag);
+      });
+      syncLabelFilterUI();
+      // 特征筛选（动态生成12种结构特征标签）
+      const featureFilterDiv = document.getElementById('feature-filter');
+      featureFilterDiv.innerHTML = '';
+      const featureNames = data.metadata.feature_names || [
+        "sulfur", "carboxylic_acid", "alkyl_four_carbon_chain", "ester", "phenyl",
+        "eight_atoms_or_fewer", "ether", "aldehyde", "hitrile", "thirteen_atoms_or_more",
+        "aromatic_nitrogen", "amine"
+      ];
+      featureNames.forEach((name, i) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = name.replace(/_/g, ' ');
+        tag.dataset.feature = name;
+        tag.onclick = () => {
+          if (featureFilter.includes(i)) {
+            featureFilter = featureFilter.filter(x => x !== i);
+            tag.classList.remove('selected');
+          } else {
+            featureFilter.push(i);
+            tag.classList.add('selected');
+          }
+          render3D();
+          renderCooccurrenceRanking();
+        };
+        featureFilterDiv.appendChild(tag);
+      });
+      // 复制SMILES
+      document.getElementById('copy-smiles').onclick = () => {
+        const smiles = document.getElementById('smiles-label').textContent;
+        navigator.clipboard.writeText(smiles);
+      };
+      // 气味标签云点击筛选功能
+      document.getElementById('tag-cloud').onclick = function (e) {
+        if (e.target.classList.contains('tag')) {
+          const tagName = e.target.textContent;
+          const idx = labelNames.indexOf(tagName);
+          if (idx !== -1) {
+            // 切换筛选
+            if (labelFilter.includes(idx)) {
+              labelFilter = labelFilter.filter(x => x !== idx);
+            } else {
+              labelFilter = [idx];
+            }
+            syncLabelFilterUI();
+            renderAll3D();
+            renderCooccurrenceRanking();
+            // 右侧云高亮
+            updateMolInfo(selectedMol);
+            updateLegendByCurrentFilter();
+          }
+        }
+      };
+      // 导航菜单
+      // document.querySelectorAll('.nav-btn').forEach(btn => {
+      //   btn.onclick = () => {
+      //     location.hash = btn.dataset.page;
+      //   };
+      // });
+
+      // 前20聚焦模式点击事件
+      document.getElementById('focus-topN-btn').onclick = function () {
+        focusTopNMode = !focusTopNMode;
+        this.textContent = focusTopNMode ? `当前：Top${topN}聚焦模式` : "当前：全部色彩模式";
+        document.getElementById('focus-mode-tip').textContent = focusTopNMode
+          ? `仅Top${topN}高频标签有颜色，其余为灰色`
+          : "全部标签分配不同颜色";
+        render3D();
+        renderLegend(labelColors, labelNames, Math.min(...molecules.map(m => m.properties.molecular_weight)), Math.max(...molecules.map(m => m.properties.molecular_weight)));
+      };
+      document.getElementById('focus-mode-tip').textContent = focusTopNMode
+        ? `仅前${topN}高频标签有颜色，其余为灰色`
+        : "全部标签分配不同颜色";
+
+      // 更新TopN标签
+      function updateTopN() {
+        // 重新计算topNLabelIdx
+        const labelStats = labelNames.map((name, i) => ({
+          label: name,
+          count: molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0),
+          idx: i
+        })).sort((a, b) => b.count - a.count);
+        topNLabelIdx = labelStats.slice(0, topN).map(x => x.idx);
+        labelPriority = Array(labelNames.length).fill(9999);
+        labelStats.forEach((obj, rank) => {
+          labelPriority[obj.idx] = rank;
+        });
+        // 重新渲染
+        document.getElementById('focus-mode-tip').textContent = focusTopNMode
+          ? `仅前${topN}高频标签有颜色，其余为灰色`
+          : "全部标签分配不同颜色";
+        render3D();
+        renderLegend(labelColors, labelNames, Math.min(...molecules.map(m => m.properties.molecular_weight)), Math.max(...molecules.map(m => m.properties.molecular_weight)));
+        renderOverviewCharts()
+      }
+
+      document.getElementById('topN-range').oninput = function () {
+        topN = +this.value;
+        document.getElementById('topN-val').textContent = topN;
+        updateTopN();
+      };
+      document.getElementById('mw-range').oninput = function () {
+        mwMax = +this.value;
+        document.getElementById('mw-range-val').textContent = mwMax;
+        render3D();
+        renderCooccurrenceRanking();
+        // 更新图例
+        const mwArr = molecules
+          .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
+          .map(m => m.properties.molecular_weight);
+        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      };
+      document.getElementById('mol-limit').oninput = function () {
+        molLimit = +this.value;
+        document.getElementById('mol-limit-range-val').textContent = molLimit;
+        render3D();
+        renderCooccurrenceRanking();
+        // 更新图例
+        const mwArr = molecules
+          .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
+          .map(m => m.properties.molecular_weight);
+        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      };
+
+      document.getElementById('dataset-select').onchange = function () {
+        document.getElementById('loading-mask').style.display = 'flex';
+        currentDataset = this.value;
+        // 重新加载数据
+        fetch(currentDataset)
+          .then(res => res.json())
+          .then(json => {
+            data = json;
+            molecules = data.molecules;
+            labelNames = data.metadata.label_names;
+            similarity = data.similarity_matrix;
+            labelColors = generateLabelColors(labelNames.length);
+            // 重新初始化所有UI和可视化
+            initUI();
+            updateCanvasLayout();
+            setTimeout(() => {
+              updateMolInfo(0);
+            }, 0);
+            renderCooccurrenceRanking();
+            renderOverviewCharts();
+            // 统计前20高频标签
+            const labelCounts = labelNames.map((name, i) =>
+              molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0)
+            );
+            const labelStats = labelNames.map((name, i) => ({
+              label: name,
+              count: labelCounts[i],
+              idx: i
+            })).sort((a, b) => b.count - a.count);
+            topNLabelIdx = labelStats.slice(0, topN).map(x => x.idx);
+            labelPriority = Array(labelNames.length).fill(9999);
+            labelStats.forEach((obj, rank) => {
+              labelPriority[obj.idx] = rank;
+            });
+            renderAll3D();
+            const mwArr = molecules
+              .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
+              .map(m => m.properties.molecular_weight);
+            renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+            document.getElementById('loading-mask').style.display = 'none';
+          });
+      };
+      // 切换SMILES/散点
+      document.getElementById('smiles-toggle-btn').onclick = function () {
+        showSmiles = !showSmiles;
+        updateCanvasLayout();
+        renderAll3D();
+      };
+      document.getElementById('embedding-select').onchange = e => {
+        currentEmbedding = e.target.value;
+        updateCanvasLayout();
+        renderAll3D();
+      };
+
+    }
+
+    // 同步左右标签筛选UI（高亮显示在左侧）
+    function syncLabelFilterUI() {
+      const div = document.getElementById('label-filter');
+      if (!div) return;
+      Array.from(div.children).forEach((tag, i) => {
+        if (labelFilter.includes(i)) tag.classList.add('selected');
+        else tag.classList.remove('selected');
+      });
+    }
+    // 同步左右特征标签筛选UI（高亮显示在左侧）
+    function syncFeatureFilterUI() {
+      const div = document.getElementById('feature-filter');
+      if (div) {
+        Array.from(div.children).forEach((tag, i) => {
+          if (featureFilter.includes(i)) tag.classList.add('selected');
+          else tag.classList.remove('selected');
+        });
+      }
+      // 右侧分子详情特征标签云
+      const featureTagCloud = document.getElementById('feature-tag-cloud');
+      if (featureTagCloud) {
+        Array.from(featureTagCloud.children).forEach((tag, i) => {
+          if (featureFilter.includes(i)) tag.classList.add('selected');
+          else tag.classList.remove('selected');
+        });
+      }
+    }
+
+
+    // 更新画布布局
+    function updateCanvasLayout() {
+      const container = document.getElementById('canvas-container');
+      // 2个画布：0为fp_coords，1为lb_coords
+      const embNames = ['结构空间', '标签空间'];
+      const embTypes = ['fp_coords', 'lb_coords'];
+      container.innerHTML = '';
+      for (let i = 0; i < 2; ++i) {
+        const div = document.createElement('div');
+        div.className = 'main-3d-canvas';
+        div.id = `main-3d-${i}`;
+        // div.style.position = 'relative';
+        div.style.transition = 'all 0.3s';
+        // 放大时只显示被放大的画布
+        if (enlargedCanvas !== -1 && enlargedCanvas !== i) {
+          div.style.opacity = '0.18';
+          div.style.pointerEvents = 'none';
+          div.style.filter = 'blur(2px)';
+        }
+        // 标题
+        const title = document.createElement('div');
+        title.className = 'canvas-title';
+        title.style.fontFamily = "'JetBrains Mono','Orbitron'";
+        title.style.fontSize = '1.08rem';
+        title.style.fontWeight = '700';
+        title.style.color = '#6c4bdb';
+        title.style.textAlign = 'center';
+        title.style.marginBottom = '0.1em';
+        div.style.height = enlargedCanvas === i ? '100%' : 'calc(50vh - 24px)';
+        div.style.width = '100%';
+        title.textContent = embNames[i] + ' - ' + (currentEmbedding === 'pca' ? 'PCA' : currentEmbedding === 'tsne' ? 't-SNE' : 'UMAP');
+        div.appendChild(title);
+        // 放大按钮
+        const btn = document.createElement('button');
+        btn.textContent = enlargedCanvas === i ? '还原' : '放大';
+        btn.style.position = 'absolute';
+        btn.style.right = '10px';
+        btn.style.bottom = '10px';
+        btn.style.zIndex = 2050;
+        btn.className = 'copy-btn';
+        btn.style.padding = '0.2em 0.9em';
+        btn.onclick = e => {
+          e.stopPropagation();
+          if (enlargedCanvas === i) {
+            enlargedCanvas = -1;
+          } else {
+            enlargedCanvas = i;
+          }
+          updateCanvasLayout();
+          renderAll3D();
+        };
+        div.appendChild(btn);
+        // label层
+        const labelLayer = document.createElement('div');
+        labelLayer.className = 'label-layer';
+        labelLayer.id = `label-layer-${i}`;
+        div.appendChild(labelLayer);
+        // 放大样式
+        if (enlargedCanvas === i) {
+          div.style.position = 'absolute';
+          div.style.left = '0';
+          div.style.top = '0';
+          div.style.width = '100%';
+          div.style.height = '100%';
+          div.style.zIndex = 2100;
+          div.style.background = 'rgba(255,255,255,0.98)';
+          div.style.boxShadow = '0 0 32px #e39ff644';
+          div.style.gridColumn = '1 / span 3';
+          div.style.gridRow = '1 / span 2';
+        }
+        btn.style.zIndex = 3000; // 按钮更高
+        container.appendChild(div);
+      }
+    }
+
+    // 多画布全部可视化
+    function renderAll3D() {
+      // 只渲染2个画布
+      // 销毁所有旧renderer，防止WebGL context泄漏
+      for (let i = 0; i < 2; ++i) {
+        const container = document.getElementById(`main-3d-${i}`);
+        if (container && container._renderer) {
+          container._renderer.dispose();
+          container._renderer.forceContextLoss && container._renderer.forceContextLoss();
+          container._renderer.domElement && container._renderer.domElement.remove();
+          container._renderer = null;
+        }
+      }
+      const embTypes = ['fp_coords', 'lb_coords'];
+      for (let i = 0; i < 2; ++i) {
+        // 放大时只渲染被放大的画布
+        if (enlargedCanvas !== -1 && enlargedCanvas !== i) continue;
+        render3DFor(currentEmbedding, `main-3d-${i}`, `label-layer-${i}`, embTypes[i]);
+      }
+    }
+
+    // 渲染单个embedding画布
+    function render3DFor(embedding, canvasId, labelLayerId, embeddingType = currentEmbeddingType) {
+      // 清理旧canvas
+      const container = document.getElementById(canvasId);
+      // 移除旧canvas
+      Array.from(container.getElementsByTagName('canvas')).forEach(c => c.remove());
+      // 清理label
+      const labelLayer = document.getElementById(labelLayerId);
+      labelLayer.innerHTML = '';
+      filteredIdx = molecules.map((mol, i) => i)
+        .filter(i => {
+          const mol = molecules[i];
+          if (mol.properties.molecular_weight > mwMax) return false;
+          return true;
+        })
+        .slice(0, molLimit);
+      // 销毁旧renderer，防止WebGL context 泄漏
+      if (container._renderer) {
+        container._renderer.dispose();
+        container._renderer.forceContextLoss && container._renderer.forceContextLoss();
+        container._renderer.domElement && container._renderer.domElement.remove();
+        container._renderer = null;
+      }
+
+      // Three.js初始化
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setClearColor(theme === "dark" ? 0x000000 : 0xf7f7fa, 1);
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, renderer.domElement.width / renderer.domElement.height, 0.1, 1000);
+      // 缩放控制
+      let baseDistance = 60;
+      let scale = 100 / zoomPercent;
+      camera.position.set(0, 0, baseDistance / scale);
+
+      // 画布控制OrbitControls
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.enablePan = false;
+      controls.minDistance = 10;
+      controls.maxDistance = 300;
+      //自动选中
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.8;
+
+      // 粒子
+      let particleData = [];
+      const geometry = new THREE.BufferGeometry();
+      const positions = [];
+      const colors = [];
+      const sizes = [];
+      const alphas = [];
+      // 计算分子量范围
+      const mwArr = filteredIdx.map(idx => molecules[idx].properties.molecular_weight);
+      const mwMin = Math.min(...mwArr), mwMaxVal = Math.max(...mwArr);
+      // 计算label_nums范围
+      const labelNumArr = filteredIdx.map(idx => molecules[idx].label_nums || molecules[idx].labels.reduce((a, b) => a + b, 0));
+      const labelNumMin = Math.min(...labelNumArr), labelNumMax = Math.max(...labelNumArr);
+
+      // 计算所有 emb 的均值和标准差
+      const allEmbs = filteredIdx
+        .map(idx => molecules[idx][embeddingType][embedding])
+        .filter(Boolean);
+      let means = [0, 0, 0], stds = [1, 1, 1];
+      if (allEmbs.length) {
+        for (let d = 0; d < 3; ++d) {
+          means[d] = allEmbs.reduce((sum, e) => sum + e[d], 0) / allEmbs.length;
+          stds[d] = Math.sqrt(allEmbs.reduce((sum, e) => sum + Math.pow(e[d] - means[d], 2), 0) / allEmbs.length) || 1;
+        }
+      }
+      filteredIdx.forEach((idx, i) => {
+        const mol = molecules[idx];
+        let emb = mol[embeddingType][embedding];
+        if (!emb) return;
+        // 归一化
+        emb = [
+          (emb[0] - means[0]) / stds[0],
+          (emb[1] - means[1]) / stds[1],
+          (emb[2] - means[2]) / stds[2]
+        ];
+        positions.push(emb[0] * 50, emb[1] * 50, emb[2] * 50);
+
+        // 判断共现状态
+        let isSelected = false, isCooccur = false;
+        if (labelFilter.length > 0 || featureFilter.length > 0) {
+          // 任一标签/特征命中
+          isSelected =
+            labelFilter.some(lidx => mol.labels[lidx] === 1) ||
+            featureFilter.some(fidx => mol.features[fidx] === 1);
+          // 所有标签/特征都命中
+          isCooccur =
+            labelFilter.every(lidx => mol.labels[lidx] === 1) &&
+            featureFilter.every(fidx => mol.features[fidx] === 1);
+        } else {
+          isSelected = true;
+          isCooccur = false;
+        }
+        // 颜色编码（根据共现/选择的标签切换）
+        let color = new THREE.Color();
+
+        //增加TopN
+        let mainLabelIdx = -1, mainLabelPriority = 9999;
+        mol.labels.forEach((v, i) => {
+          if (v && labelPriority[i] < mainLabelPriority) {
+            mainLabelPriority = labelPriority[i];
+            mainLabelIdx = i;
+          }
+        });
+        let isTopN = topNLabelIdx.includes(mainLabelIdx);
+
+
+        if (!isSelected) {
+          color.setStyle('#bbb'); // 灰色
+        } else if (isCooccur) {
+          color.setStyle('#ff5e7e'); // 高亮色
+        } else {
+          if (focusTopNMode) {
+            color.setStyle(isTopN ? labelColors[mainLabelIdx] : '#bbb');
+          } else {
+            color.setStyle(labelColors[mainLabelIdx >= 0 ? mainLabelIdx : 0]);
+          }
+        }
+        colors.push(color.r, color.g, color.b);
+
+        // 大小编码（分子量，减小点大小，避免遮挡）
+        let mw = mol.properties.molecular_weight;
+        let size = 7 + 13 * ((mw - mwMin) / (mwMaxVal - mwMin + 0.01)); // 7~20
+        sizes.push(size);
+
+        // 透明度
+        const n = mol.label_nums || mol.labels.reduce((a, b) => a + b, 0);
+        // 感觉不是很明显，统一透明度了，（注释掉的内容是根据label_nums编码，越多越不透明）
+        // let alpha = 0.28 + 0.55 * ((n - labelNumMin) / (labelNumMax - labelNumMin + 0.01)); // 0.28~0.83
+        // alphas.push(alpha);
+        alphas.push(0.5);
+
+        particleData.push({ idx, emb, color, size, labelNum: n, isCooccur });
+      });
+
+      // 创建label div（SMILES或散点）
+      filteredIdx.forEach((idx, i) => {
+        const mol = molecules[idx];
+        const emb = mol[embeddingType][embedding];
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'point-label';
+
+        // 重新计算 isSelected 和 isCooccur
+        let isSelected = false, isCooccur = false;
+        if (labelFilter.length > 0 || featureFilter.length > 0) {
+          isSelected =
+            labelFilter.some(lidx => mol.labels[lidx] === 1) ||
+            featureFilter.some(fidx => mol.features[fidx] === 1);
+          isCooccur =
+            labelFilter.every(lidx => mol.labels[lidx] === 1) &&
+            featureFilter.every(fidx => mol.features[fidx] === 1);
+        } else {
+          isSelected = true;
+          isCooccur = false;
+        }
+        if (showSmiles) {
+          labelDiv.textContent = mol.smiles;
+          labelDiv.style.display = 'block';
+        } else {
+          labelDiv.textContent = '';
+          labelDiv.style.display = 'none';
+        }
+
+        // 高亮/灰色逻辑
+        if (particleData[i].isCooccur) {
+          labelDiv.style.boxShadow = '0 0 0 3px #ff5e7e99';
+          labelDiv.style.border = '2px solid #ff5e7e';
+        } else if (!isSelected) {
+          labelDiv.style.opacity = '0.25';
+          labelDiv.style.filter = 'grayscale(0.7)';
+          labelDiv.style.border = '';
+          labelDiv.style.boxShadow = '';
+        } else {
+          labelDiv.style.border = '';
+          labelDiv.style.boxShadow = '';
+          labelDiv.style.opacity = '0.75';
+          labelDiv.style.filter = '';
+        }
+
+        labelDiv.style.pointerEvents = 'none';
+        labelLayer.appendChild(labelDiv);
+        particleData[i].labelDiv = labelDiv;
+
+      });
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+      geometry.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
+
+      // 自定义ShaderMaterial实现颜色/大小/透明度
+      const vertexShader = `
+        attribute float size;
+        attribute float alpha;
+        varying float vAlpha;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vAlpha = alpha;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * (220.0 / length(mvPosition.xyz));
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `;
+      const fragmentShader = `
+        varying float vAlpha;
+        varying vec3 vColor;
+        void main() {
+          float dist = length(gl_PointCoord - vec2(0.5,0.5));
+          float edge = smoothstep(0.45, 0.5, dist); // 0.45~0.5为边缘
+          // vec3 edgeColor = vec3(1.0, 0.36, 0.49); // #ff5e7e
+          // vec3 color = mix(vColor, edgeColor, edge);
+          // float alpha = vAlpha * (1.0 - dist * 1.2);
+          vec3 edgeColor = vec3(1.0, 0.84, 0.0); // #ffcc00
+          vec3 color = mix(vColor, edgeColor, edge);
+          float alpha = vAlpha * (1.0 - dist * 0.3);
+          if(dist > 0.5) discard;
+          gl_FragColor = vec4(color, alpha);
+        }
+      `;
+      const material = new THREE.ShaderMaterial({
+        uniforms: {},
+        vertexColors: true,
+        transparent: true,
+        vertexShader,
+        fragmentShader
+      });
+
+      const particles = new THREE.Points(geometry, material);
+      scene.add(particles);
+
+      /// 动画与交互
+      let hoveredIdx = null;
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      raycaster.params.Points.threshold = 3.0;
+      renderer.domElement.onmousemove = function (event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(particles);
+        const tooltip = document.getElementById('mol-tooltip');
+        if (intersects.length > 0) {
+          hoveredIdx = intersects[0].index;
+          const idx = filteredIdx[hoveredIdx];
+          const mol = molecules[idx];
+          tooltip.style.display = 'block';
+          tooltip.innerHTML = `
+            <b>SMILES:</b> ${mol.smiles}<br>
+            <b>分子量:</b> ${mol.properties.molecular_weight || ''}<br>
+            <b>标签:</b> ${mol.labels.map((v, i) => v ? labelNames[i] : '').filter(x => x).join(', ')}<br>
+            <b>特征:</b> ${mol.features.map((v, i) => v ? (data.metadata.feature_names[i] || i) : '').filter(x => x).join(', ')}
+          `;
+          tooltip.style.left = event.clientX + 18 + 'px';
+          tooltip.style.top = event.clientY + 18 + 'px';
+        } else {
+          hoveredIdx = null;
+          tooltip.style.display = 'none';
+        }
+      };
+      renderer.domElement.onclick = function (event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(particles);
+        if (intersects.length > 0) {
+          const idx = filteredIdx[intersects[0].index];
+          updateMolInfo(idx);
+        }
+      };
+
+      // 计算所有点的中心
+      let center = [0, 0, 0];
+      if (positions.length >= 3) {
+        for (let i = 0; i < positions.length; i += 3) {
+          center[0] += positions[i];
+          center[1] += positions[i + 1];
+          center[2] += positions[i + 2];
+        }
+        center = center.map(x => x / (positions.length / 3));
+        camera.position.set(center[0], center[1], center[2] + 100);
+        controls.target.set(center[0], center[1], center[2]);
+        controls.update();
+      }
+
+      // 动画循环
+      function animate() {
+        controls.update();
+        renderer.render(scene, camera);
+        if (particleData.length) {
+          for (let i = 0; i < particleData.length; ++i) {
+            const emb = particleData[i].emb;
+            const vector = new THREE.Vector3(emb[0] * 50, emb[1] * 50, emb[2] * 50);
+            vector.project(camera);
+            const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+            const y = (1 - (vector.y * 0.5 + 0.5)) * renderer.domElement.clientHeight;
+            const labelDiv = particleData[i].labelDiv;
+            if (labelDiv) {
+              let lx = x, ly = y;
+              const w = renderer.domElement.clientWidth;
+              const h = renderer.domElement.clientHeight;
+              if (lx < 0) lx = 0;
+              if (lx > w - 10) lx = w - 10;
+              if (ly < 0) ly = 0;
+              if (ly > h - 10) ly = h - 10;
+              labelDiv.style.left = `${lx - 10}px`;
+              labelDiv.style.top = `${ly - 10}px`;
+
+            }
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+      // renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+    }
+
+    // 重写主渲染入口
+    function render3D() {
+      renderAll3D();
+      // 图例只渲染一次
+      const mwArr = molecules
+        .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
+        .map(m => m.properties.molecular_weight);
+      renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+    }
+
+    // 右侧分子详情面板
+    function updateMolInfo(idx) {
+      if (!molecules || !molecules[idx]) return; // 防止未加载或越界
+      selectedMol = idx;
+      const mol = molecules[idx];
+      document.getElementById('smiles-label').textContent = mol.smiles;
+      document.getElementById('iupac-label').textContent = mol.properties.iupac_name || 'N/A';
+      // 2D分子图白底
+      const ctx = document.getElementById('mol2d').getContext('2d');
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, 220, 160);
+      ctx.restore();
+      const drawer = new SmilesDrawer.Drawer({
+        width: 220,
+        height: 160,
+        theme: 'light',
+        padding: 10
+      });
+      SmilesDrawer.parse(mol.smiles, function (tree) {
+        drawer.draw(tree, 'mol2d', 'light', false);
+      }, function () {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, 220, 160);
+        ctx.fillStyle = "#222";
+        ctx.font = "16px JetBrains Mono, Orbitron, Arial";
+        ctx.fillText("无法解析", 80, 80);
+      });
+      // 标签云
+      const tagCloud = document.getElementById('tag-cloud');
+      tagCloud.innerHTML = '';
+      mol.labels.forEach((v, i) => {
+        if (v) {
+          const span = document.createElement('span');
+          span.className = 'tag';
+          span.textContent = labelNames[i];
+          // span.style.fontSize = (1.1 + Math.random() * 0.6) + 'rem';
+          span.style.fontSize = 0.8 + 'rem';
+          span.style.background = labelColors[i];
+          tagCloud.appendChild(span);
+        }
+      });
+      // 推荐
+      renderSimList('structural-sim', similarity.structural[idx], 'Tanimoto');
+      renderSimList('label-sim', similarity.label[idx], 'Jaccard');
+
+      // 特征标签云
+      const featureTagCloud = document.getElementById('feature-tag-cloud');
+      featureTagCloud.innerHTML = '';
+      const featureNames = data.metadata.feature_names || [
+        "sulfur", "carboxylic_acid", "alkyl_four_carbon_chain", "ester", "phenyl",
+        "eight_atoms_or_fewer", "ether", "aldehyde", "hitrile", "thirteen_atoms_or_more",
+        "aromatic_nitrogen", "amine"
+      ];
+      mol.features.forEach((v, i) => {
+        if (v) {
+          const span = document.createElement('span');
+          span.className = 'tag';
+          span.textContent = featureNames[i].replace(/_/g, ' ');
+          // span.style.fontSize = (1.1 + Math.random() * 0.6) + 'rem';
+          span.style.fontSize = 0.8 + 'rem';
+          span.style.background = '#e39ff6';
+          // 高亮
+          if (featureFilter.includes(i)) span.classList.add('selected');
+          // 点击筛选
+          span.onclick = () => {
+            if (featureFilter.includes(i)) {
+              featureFilter = featureFilter.filter(x => x !== i);
+            } else {
+              featureFilter.push(i);
+            }
+            syncFeatureFilterUI();
+            renderAll3D();
+            renderCooccurrenceRanking();
+            updateMolInfo(selectedMol);
+          };
+          featureTagCloud.appendChild(span);
+        }
+      });
+
+      // 分子对比按钮
+      const compareBtn = document.getElementById('add-to-compare');
+      if (!compareBtn) {
+        const btn = document.createElement('button');
+        btn.id = 'add-to-compare';
+        btn.className = 'copy-btn';
+        btn.textContent = compareList.includes(idx) ? '已加入对比' : '加入对比';
+        btn.onclick = function () {
+          if (!compareList.includes(idx)) {
+            compareList.push(idx);
+            btn.textContent = '已加入对比';
+          }
+          // 注释掉的这一行：自动跳转到对比页
+          // switchPage('compare');
+          renderComparePage();
+        };
+        document.getElementById('mol-info').insertBefore(btn, document.getElementById('mol2d'));
+      } else {
+        compareBtn.textContent = compareList.includes(idx) ? '已加入对比' : '加入对比';
+        compareBtn.onclick = function () {
+          if (!compareList.includes(idx)) {
+            compareList.push(idx);
+            compareBtn.textContent = '已加入对比';
+          }
+          renderComparePage();
+        };
+      }
+    }
+    function addColorBarLegend(svg, colorScale, x, y, width, height, minVal, maxVal, label) {
+      // 竖直渐变定义
+      const defs = svg.append('defs');
+      const gradientId = 'colorbar-gradient-' + Math.random().toString(36).slice(2, 8);
+      const gradient = defs.append('linearGradient')
+        .attr('id', gradientId)
+        .attr('x1', '0%').attr('y1', '100%')
+        .attr('x2', '0%').attr('y2', '0%');
+      for (let i = 0; i <= 100; i += 2) {
+        gradient.append('stop')
+          .attr('offset', `${i}%`)
+          .attr('stop-color', colorScale(minVal + (maxVal - minVal) * i / 100));
+      }
+      // 颜色条
+      svg.append('rect')
+        .attr('x', x)
+        .attr('y', y)
+        .attr('width', width)
+        .attr('height', height)
+        .attr('fill', `url(#${gradientId})`)
+        .attr('stroke', '#ccc');
+      // 最小值
+      svg.append('text')
+        .attr('x', x + width / 2)
+        .attr('y', y + height + 18)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.92em')
+        .attr('fill', '#222')
+        .text(minVal);
+      // 最大值
+      svg.append('text')
+        .attr('x', x + width / 2)
+        .attr('y', y - 6)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.92em')
+        .attr('fill', '#222')
+        .text(maxVal);
+      // label
+      svg.append('text')
+        .attr('x', x + width / 2)
+        .attr('y', y - 28)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#222')
+        .text(label || '共现次数');
+    }
+    // 推荐列表加2D分子图
+    function renderSimList(id, simArr, type) {
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      let arr = simArr.map((v, i) => ({ i, v }))
+        .filter(x => x.i !== selectedMol)
+        .sort((a, b) => b.v - a.v)
+        .slice(0, 5);
+      arr.forEach(obj => {
+        const li = document.createElement('li');
+        // 增加canvas用于2D分子图
+        li.innerHTML = `<canvas class="sim-mol2d" id="${id}-mol2d-${obj.i}" width="38" height="28"></canvas>
+          <span>${molecules[obj.i].smiles}</span>
+          <span class="sim-score">${obj.v.toFixed(2)}</span>
+           <button class="add-compare-btn" title="加入对比" onclick="event.stopPropagation();addToCompare(${obj.i})">+</button>`;
+        li.onclick = () => updateMolInfo(obj.i);
+        ul.appendChild(li);
+        // 渲染2D分子图
+        SmilesDrawer.parse(molecules[obj.i].smiles, function (tree) {
+          const drawer = new SmilesDrawer.Drawer({ width: 38, height: 28, theme: 'light', padding: 2 });
+          drawer.draw(tree, `${id}-mol2d-${obj.i}`, 'light', false);
+        });
+      });
+    }
+    function renderLabelBarChart(container, labelStats, labelColors, onBarClick) {
+      container.innerHTML = '';
+      const width = 600, height = 320, margin = { top: 40, right: 20, bottom: 60, left: 50 };
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#fff');
+
+      // Title
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', margin.top / 2)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '1.18em')
+        .attr('font-weight', 'bold')
+        .attr('fill', '#222')
+        .text('标签分子数分布');
+
+      // Annotation
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#888')
+        .text(`每个柱表示Top${labelStats.length}标签下每个标签的分子数分布`);
+
+      // 图例
+      svg.append('rect')
+        .attr('x', width - 140)
+        .attr('y', 18)
+        .attr('width', 18)
+        .attr('height', 18)
+        .attr('fill', '#ff5e7e')
+        .attr('stroke', '#ff5e7e')
+        .attr('stroke-width', 2);
+      svg.append('text')
+        .attr('x', width - 115)
+        .attr('y', 32)
+        .attr('font-size', '0.92em')
+        .attr('fill', '#ff5e7e')
+        .text('当前筛选标签');
+
+      // Tooltip
+      let tooltip = d3.select(container).select('.d3-tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select(container)
+          .append('div')
+          .attr('class', 'd3-tooltip')
+          .style('position', 'absolute')
+          .style('background', '#fff')
+          .style('color', '#6c4bdb')
+          .style('padding', '0.5em 1em')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 2px 8px #e39ff644')
+          .style('pointer-events', 'none')
+          .style('font-size', '0.98em')
+          .style('display', 'none')
+          .style('z-index', 1000);
+      }
+
+      const x = d3.scaleBand()
+        .domain(labelStats.map(d => d.label))
+        .range([margin.left, width - margin.right])
+        .padding(0.18);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(labelStats, d => d.count)]).nice()
+        .range([height - margin.bottom, margin.top]);
+
+      svg.append('g')
+        .selectAll('rect')
+        .data(labelStats)
+        .join('rect')
+        .attr('x', d => x(d.label))
+        .attr('y', d => isNaN(y(d.count)) ? y(0) : y(d.count))
+        .attr('width', x.bandwidth())
+        .attr('height', d => isNaN(y(d.count)) ? 0 : y(0) - y(d.count))
+        .attr('fill', d => labelFilter.includes(d.idx) ? '#ff5e7e' : labelColors[d.idx])
+        .attr('stroke', d => labelFilter.includes(d.idx) ? '#ff5e7e' : 'none')
+        .attr('stroke-width', d => labelFilter.includes(d.idx) ? 2 : 0)
+        .attr('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          d3.select(this).attr('fill', '#ff5e7e');
+          tooltip.style('display', 'block')
+            .html(`<b>${d.label}</b><br>分子数: <b>${d.count}</b>`)
+            .style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mousemove', function (event) {
+          tooltip.style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mouseout', function (event, d) {
+          d3.select(this)
+            .attr('fill', labelFilter.includes(d.idx) ? '#ff5e7e' : labelColors[d.idx])
+            .attr('stroke', labelFilter.includes(d.idx) ? '#ff5e7e' : 'none');
+          tooltip.style('display', 'none');
+        })
+        .on('click', (event, d) => onBarClick(d.idx));
+
+      svg.append('g')
+        .attr('transform', `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickFormat(d => d).tickSizeOuter(0))
+        .selectAll("text")
+        .attr("transform", "rotate(-35)")
+        .style("text-anchor", "end")
+        .style("font-size", `${Math.min(1.0, 20.0 / labelStats.length + 0.1)}em`); //针对标签数调整轴文字大小
+
+      svg.append('g')
+        .attr('transform', `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y));
+
+    }
+    function renderTagNumHistogram(container, tagNumData) {
+      if (!container) return;
+      container.innerHTML = '';
+      const width = 600, height = 300, margin = { top: 40, right: 20, bottom: 40, left: 50 };
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#fff');
+
+      // Title
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', margin.top / 2)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '1.18em')
+        .attr('font-weight', 'bold')
+        .attr('fill', '#222')
+        .text('分子标签数分布');
+
+      // Annotation
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#888')
+        .text(`每个柱表示Top${topN}标签下拥有该数量的分子数`);
+
+      // 图例
+      svg.append('rect')
+        .attr('x', width - 140)
+        .attr('y', 18)
+        .attr('width', 18)
+        .attr('height', 18)
+        .attr('fill', '#6c4bdb');
+      svg.append('text')
+        .attr('x', width - 115)
+        .attr('y', 32)
+        .attr('font-size', '0.92em')
+        .attr('fill', '#6c4bdb')
+        .text('分子数');
+
+      // Tooltip
+      let tooltip = d3.select(container).select('.d3-tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select(container)
+          .append('div')
+          .attr('class', 'd3-tooltip')
+          .style('position', 'absolute')
+          .style('background', '#fff')
+          .style('color', '#6c4bdb')
+          .style('padding', '0.5em 1em')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 2px 8px #e39ff644')
+          .style('pointer-events', 'none')
+          .style('font-size', '0.98em')
+          .style('display', 'none')
+          .style('z-index', 1000);
+      }
+
+      const x = d3.scaleBand()
+        .domain(tagNumData.map(d => d.num))
+        .range([margin.left, width - margin.right])
+        .padding(0.18);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(tagNumData, d => d.count)]).nice()
+        .range([height - margin.bottom, margin.top]);
+
+      svg.append('g')
+        .selectAll('rect')
+        .data(tagNumData)
+        .join('rect')
+        .attr('x', d => x(d.num))
+        .attr('y', d => isNaN(y(d.count)) ? y(0) : y(d.count))
+        .attr('width', x.bandwidth())
+        .attr('height', d => isNaN(y(d.count)) ? 0 : y(0) - y(d.count))
+        .attr('fill', '#6c4bdb')
+        .attr('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          d3.select(this).attr('fill', '#ff5e7e');
+          tooltip.style('display', 'block')
+            .html(`<b>标签数: ${d.num}</b><br>分子数: <b>${d.count}</b>`)
+            .style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mousemove', function (event) {
+          tooltip.style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mouseout', function () {
+          d3.select(this).attr('fill', '#6c4bdb');
+          tooltip.style('display', 'none');
+        });
+
+      svg.append('g')
+        .attr('transform', `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickFormat(d => d).tickSizeOuter(0))
+        .selectAll("text")
+        .attr("transform", "rotate(-35)")
+        .style("text-anchor", "end")
+        .style("font-size", "0.92em");
+
+      svg.append('g')
+        .attr('transform', `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y));
+      // svg.selectAll('text').style('fill', '#222');
+    }
+    function renderCooccurrenceHeatmap(container, coMat, labelNames, onCellClick) {
+      container.innerHTML = '';
+      const n = coMat.length;
+      const width = 600, height = 600, margin = { top: 150, right: 50, bottom: 80, left: 120 };
+      const cellSize = (width - margin.left - margin.bottom) / n;
+
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#fff');
+
+      let tooltip = d3.select(container).select('.d3-tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select(container)
+          .append('div')
+          .attr('class', 'd3-tooltip')
+          .style('position', 'absolute')
+          .style('background', '#fff')
+          .style('color', '#6c4bdb')
+          .style('padding', '0.5em 1em')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 2px 8px #e39ff644')
+          .style('pointer-events', 'none')
+          .style('font-size', '0.98em')
+          .style('display', 'none')
+          .style('z-index', 1000);
+      }
+      // Title
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '1.25em')
+        .attr('font-weight', 'bold')
+        .attr('fill', '#222')
+        .text('标签共现热力图');
+
+      // Annotation
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 20)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#888')
+        .text(`每个格表示Top${topN}标签下标签共现次数`);
+
+      const maxVal = d3.max(coMat.flat());
+      const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, maxVal]);
+
+      // Cells
+      svg.append('g')
+        .selectAll('rect')
+        .data(d3.cross(d3.range(n), d3.range(n)))
+        .join('rect')
+        .attr('x', d => margin.left + d[0] * cellSize)
+        .attr('y', d => margin.top + d[1] * cellSize)
+        .attr('width', cellSize)
+        .attr('height', cellSize)
+        .attr('fill', d => colorScale(coMat[d[1]][d[0]]))
+        .attr('stroke', '#fff')
+        .attr('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          d3.select(this).attr('stroke', '#ff5e7e').attr('stroke-width', 2);
+          tooltip.style('display', 'block')
+            .html(`<b>${labelNames[d[0]]}</b> & <b>${labelNames[d[1]]}</b><br>共现数: <b>${coMat[d[1]][d[0]]}</b>`)
+            .style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mousemove', function (event) {
+          tooltip.style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mouseout', function () {
+          d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1);
+          tooltip.style('display', 'none');
+        })
+        .on('click', (event, d) => onCellClick(d[0], d[1]));
+
+      // X axis labels (rotated)
+      svg.append('g')
+        .selectAll('text')
+        .data(labelNames)
+        .join('text')
+        .attr('x', (d, i) => margin.left + i * cellSize + cellSize / 2)
+        .attr('y', margin.top - 10)
+        .attr('text-anchor', 'start')
+        .attr('transform', (d, i) => `rotate(-90,${margin.left + i * cellSize + cellSize / 2},${margin.top - 10})`)
+        .style('font-size', '0.70em')
+        .text(d => d);
+
+      // Y axis labels
+      svg.append('g')
+        .selectAll('text')
+        .data(labelNames)
+        .join('text')
+        .attr('x', margin.left - 10)
+        .attr('y', (d, i) => margin.top + i * cellSize + cellSize / 2 + 5)
+        .attr('text-anchor', 'end')
+        .style('font-size', '0.70em')
+        .text(d => d);
+
+      addColorBarLegend(
+        svg,
+        colorScale,
+        width - 40, // x，靠右
+        margin.top, // y，和热力图上边对齐
+        18,         // width，竖条宽度
+        n * cellSize, // height，和热力图高度一致
+        0,
+        maxVal,
+        '共现次数'
+      );
+    }
+    function renderChordDiagram(container, matrix, labelNames) {
+      // 标签共现和弦图
+      container.innerHTML = '';
+      const width = 600, height = 600, innerRadius = 160, outerRadius = 180;
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#fff') // 白色背景
+      // Title
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '1.25em')
+        .attr('font-weight', 'bold')
+        .attr('fill', '#222')
+        .text('标签共现和弦图');
+      // Annotation
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#888')
+        .text(`每条弦表示Top${topN}标签间的共现关系，弦宽代表共现次数`);
+      const g = svg.append('g')
+        .attr('transform', `translate(${width / 2},${height / 2})`);
+
+      let tooltip = d3.select(container).select('.d3-tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select(container)
+          .append('div')
+          .attr('class', 'd3-tooltip')
+          .style('position', 'absolute')
+          .style('background', '#fff')
+          .style('color', '#6c4bdb')
+          .style('padding', '0.5em 1em')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 2px 8px #e39ff644')
+          .style('pointer-events', 'none')
+          .style('font-size', '0.98em')
+          .style('display', 'none')
+          .style('z-index', 1000);
+      }
+
+      const chord = d3.chord().padAngle(0.05).sortSubgroups(d3.descending);
+      const chords = chord(matrix);
+      const arc = d3.arc().innerRadius(innerRadius).outerRadius(outerRadius);
+      const ribbon = d3.ribbon().radius(innerRadius);
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+      // 分组弧
+      g.append('g')
+        .selectAll('path')
+        .data(chords.groups)
+        .join('path')
+        .attr('fill', d => color(d.index))
+        .attr('stroke', '#fff')
+        .attr('d', arc)
+        .attr('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          d3.select(this).attr('fill', '#ff5e7e');
+          tooltip.style('display', 'block')
+            .html(`<b>${labelNames[d.index]}</b><br>总共现: ${d.value}`)
+            .style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mousemove', function (event) {
+          tooltip.style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mouseout', function (event, d) {
+          d3.select(this).attr('fill', color(d.index));
+          tooltip.style('display', 'none');
+        })
+        .on('click', function (event, d) {
+          labelFilter = [topNLabelIdx[d.index]]; // 点击弧筛选对应标签，注意要是topNLabelIdx
+          syncLabelFilterUI();
+          render3D();
+          renderCooccurrenceRanking();
+          updateMolInfo(selectedMol);
+          updateLegendByCurrentFilter();
+        });
+
+      // 标签
+      g.append('g')
+        .selectAll('text')
+        .data(chords.groups)
+        .join('text')
+        .attr('transform', d => `
+      rotate(${(d.startAngle + d.endAngle) / 2 * 180 / Math.PI - 90})
+      translate(${outerRadius + 8})
+      ${((d.startAngle + d.endAngle) / 2 > Math.PI) ? 'rotate(180)' : ''}
+    `)
+        .attr('dy', '0.32em')
+        .attr('text-anchor', d => ((d.startAngle + d.endAngle) / 2 > Math.PI) ? 'end' : 'start')
+        .text(d => labelNames[d.index])
+        .style('font-size', '0.92em')
+        .style('fill', '#222'); // 黑色文字
+
+      // 和弦
+      g.append('g')
+        .attr('fill-opacity', 0.75)
+        .selectAll('path')
+        .data(chords)
+        .join('path')
+        .attr('d', ribbon)
+        .attr('fill', d => color(d.target.index))
+        .attr('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          d3.select(this).attr('fill', '#ff5e7e');
+          tooltip.style('display', 'block')
+            .html(`<b>${labelNames[d.source.index]}</b> → <b>${labelNames[d.target.index]}</b><br>共现: ${d.source.value}`)
+            .style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mousemove', function (event) {
+          tooltip.style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mouseout', function (event, d) {
+          d3.select(this).attr('fill', color(d.target.index));
+          tooltip.style('display', 'none');
+        })
+        .on('click', function (event, d) {
+          // 注意要是topNLabelIdx才是筛选前N对应的
+          labelFilter = [topNLabelIdx[d.source.index], topNLabelIdx[d.target.index]];
+          syncLabelFilterUI();
+          render3D();
+          renderCooccurrenceRanking();
+          updateMolInfo(selectedMol);
+          updateLegendByCurrentFilter();
+        });
+    }
+
+
+    function addViolinLegend(svg, width, height, groupNames, labelColors) {
+      const legend = svg.append('g')
+        .attr('class', 'violin-legend')
+        .attr('transform', `translate(${width - 90},${10})`);
+      groupNames.slice(0, 20).forEach((name, i) => {
+        legend.append('rect')
+          .attr('x', 0)
+          .attr('y', i * 18)
+          .attr('width', 10)
+          .attr('height', 10)
+          .attr('fill', labelColors[i]);
+        legend.append('text')
+          .attr('x', 26)
+          .attr('y', i * 18 + 13)
+          .attr('font-size', '0.60em')
+          .attr('fill', '#222')
+          .text(name);
+      });
+      if (groupNames.length > 20) {
+        legend.append('text')
+          .attr('x', 10)
+          .attr('y', 20 * 18 + 10)
+          .attr('font-size', '1.00em')
+          .attr('fill', '#555')
+          .text('...');
+      }
+    }
+    function renderViolinPlot(container, groups, groupNames, labelColors) {
+      // 分子量按标签分组小提琴图
+      container.innerHTML = '';
+      const width = 600, height = 390, margin = { top: 50, right: 100, bottom: 100, left: 40 };
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#fff');
+
+      // Title
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', margin.top / 2)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '1.25em')
+        .attr('font-weight', 'bold')
+        .attr('fill', '#222')
+        .text('分子量小提琴图');
+
+      // Annotation
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#888')
+        .text(`每个小提琴表示Top${topN}标签下分子量分布`);
+
+      // Tooltip
+      let tooltip = d3.select(container).select('.d3-tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select(container)
+          .append('div')
+          .attr('class', 'd3-tooltip')
+          .style('position', 'absolute')
+          .style('background', '#fff')
+          .style('color', '#6c4bdb')
+          .style('padding', '0.5em 1em')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 2px 8px #e39ff644')
+          .style('pointer-events', 'none')
+          .style('font-size', '0.98em')
+          .style('display', 'none')
+          .style('z-index', 1000);
+      }
+
+      const allData = groups.flat();
+      const y = d3.scaleLinear()
+        .domain([d3.min(allData), d3.max(allData)]).nice()
+        .range([height - margin.bottom, margin.top]);
+      const x = d3.scaleBand()
+        .domain(groupNames)
+        .range([margin.left, width - margin.right])
+        .padding(0.18);
+
+      groups.forEach((vals, i) => {
+        const kde = kernelDensityEstimator(kernelEpanechnikov(7), y.ticks(40));
+        const density = kde(vals);
+        const maxDensity = d3.max(density, d => d[1]);
+        const scale = d3.scaleLinear()
+          .range([0, x.bandwidth() / 2])
+          .domain([0, maxDensity]);
+        const area = d3.area()
+          .x0(d => x(groupNames[i]) + x.bandwidth() / 2 - scale(d[1]))
+          .x1(d => x(groupNames[i]) + x.bandwidth() / 2 + scale(d[1]))
+          .y(d => y(d[0]))
+          .curve(d3.curveCatmullRom);
+
+        svg.append('path')
+          .datum(density)
+          .attr('class', 'violin-group')
+          .attr('data-group', groupNames[i])
+          .attr('d', area)
+          .attr('fill', labelColors[i])
+          .attr('opacity', 0.7)
+          .attr('cursor', 'pointer')
+          .on('mouseover', function (event) {
+            d3.select(this).attr('fill', '#ff5e7e');
+            tooltip.style('display', 'block')
+              .html(`<b>${groupNames[i]}</b><br>分子数: ${vals.length}<br>均值: ${d3.mean(vals).toFixed(2)}`)
+              .style('left', (event.offsetX + 20) + 'px')
+              .style('top', (event.offsetY - 10) + 'px');
+          })
+          .on('mousemove', function (event) {
+            tooltip.style('left', (event.offsetX + 20) + 'px')
+              .style('top', (event.offsetY - 10) + 'px');
+          })
+          .on('mouseout', function () {
+            d3.select(this).attr('fill', labelColors[i]);
+            tooltip.style('display', 'none');
+          })
+          .on('click', function () {
+            svg.selectAll('.violin-group').attr('stroke', null);
+            d3.select(this).attr('stroke', '#ff5e7e').attr('stroke-width', 3);
+            const idx = labelNames.indexOf(groupNames[i]);
+            if (idx !== -1) {
+              labelFilter = [idx];
+              syncLabelFilterUI();
+              render3D();
+              renderCooccurrenceRanking();
+              updateMolInfo(selectedMol);
+              updateLegendByCurrentFilter();
+            }
+          });
+      });
+
+      // 均值点
+      groups.forEach((vals, i) => {
+        svg.append('circle')
+          .attr('cx', x(groupNames[i]) + x.bandwidth() / 2)
+          .attr('cy', y(d3.mean(vals)))
+          .attr('r', 4)
+          .attr('fill', '#ff5e7e');
+      });
+
+      svg.append('g')
+        .attr('transform', `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickFormat(d => d).tickSizeOuter(0))
+        .selectAll("text")
+        .attr("transform", "rotate(-35)")
+        .style("text-anchor", "end")
+        .style("font-size", "0.92em");
+
+      svg.append('g')
+        .attr('transform', `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y));
+
+      // svg.selectAll('text').style('fill', '#222');
+
+      // 图例
+      addViolinLegend(svg, width, height, groupNames, labelColors);
+
+      function kernelDensityEstimator(kernel, X) {
+        return function (V) {
+          return X.map(function (x) {
+            return [x, d3.mean(V, v => kernel(x - v))];
+          });
+        };
+      }
+      function kernelEpanechnikov(k) {
+        return function (v) {
+          return Math.abs(v /= k) <= 1 ? 0.75 * (1 - v * v) / k : 0;
+        };
+      }
+    }
+    function getChartToolbarHTML(chartId) {
+      return `
+    <div class="chart-toolbar" id="toolbar-${chartId}">
+      <button class="copy-btn" onclick="enlargeChart('${chartId}')">放大</button>
+      <button class="copy-btn" onclick="downloadSVG('${chartId}', '${chartId}.svg')">下载SVG</button>
+    </div>
+  `;
+    }
+
+    function renderLabelFeatureHeatmap(container, mat, labelNames, featureNames) {
+      container.innerHTML = '';
+      const n = mat.length, m = mat[0].length;
+      const maxWidth = 600, maxHeight = 600;
+      const margin = { top: 160, right: 55, bottom: 40, left: 130 };
+      const cellW = Math.max(18, Math.floor((maxWidth - margin.left - margin.right) / m));
+      const cellH = Math.max(18, Math.floor((maxHeight - margin.top - margin.bottom) / n));
+      const width = margin.left + margin.right + cellW * m;
+      const height = margin.top + margin.bottom + cellH * n;
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#fff');
+
+      // Title
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', margin.top / 2)
+        .attr('y', 22)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '1.25em')
+        .attr('font-weight', 'bold')
+        .attr('fill', '#222')
+        .text('标签-特征热力图');
+
+      // Annotation
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 8)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '0.98em')
+        .attr('fill', '#888')
+        .text(`每个格表示Top${topN}标签下特征出现次数`);
+
+      // Tooltip
+      let tooltip = d3.select(container).select('.d3-tooltip');
+      if (tooltip.empty()) {
+        tooltip = d3.select(container)
+          .append('div')
+          .attr('class', 'd3-tooltip')
+          .style('position', 'absolute')
+          .style('background', '#fff')
+          .style('color', '#6c4bdb')
+          .style('padding', '0.5em 1em')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 2px 8px #e39ff644')
+          .style('pointer-events', 'none')
+          .style('font-size', '0.98em')
+          .style('display', 'none')
+          .style('z-index', 1000);
+      }
+
+      const maxVal = d3.max(mat.flat());
+      const colorScale = d3.scaleSequential(d3.interpolateYlGnBu).domain([0, maxVal]);
+
+      // Cells
+      svg.append('g')
+        .selectAll('rect')
+        .data(d3.cross(d3.range(n), d3.range(m)))
+        .join('rect')
+        .attr('x', d => margin.left + d[1] * cellW)
+        .attr('y', d => margin.top + d[0] * cellH)
+        .attr('width', cellW)
+        .attr('height', cellH)
+        .attr('fill', d => colorScale(mat[d[0]][d[1]]))
+        .attr('stroke', '#fff')
+        .attr('cursor', 'pointer')
+        .on('mouseover', function (event, d) {
+          d3.select(this).attr('stroke', '#ff5e7e').attr('stroke-width', 2);
+          tooltip.style('display', 'block')
+            .html(`<b>${labelNames[d[0]]}</b> × <b>${featureNames[d[1]]}</b><br>共现数: <b>${mat[d[0]][d[1]]}</b>`)
+            .style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mousemove', function (event) {
+          tooltip.style('left', (event.offsetX + 20) + 'px')
+            .style('top', (event.offsetY - 10) + 'px');
+        })
+        .on('mouseout', function () {
+          d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1);
+          tooltip.style('display', 'none');
+        })
+        .on('click', function (event, d) {
+          // d[0]是标签索引，d[1]是特征索引
+          labelFilter = [topNLabelIdx[d[0]]];
+          featureFilter = [d[1]];
+          syncLabelFilterUI();
+          syncFeatureFilterUI();
+          render3D();
+          renderCooccurrenceRanking();
+          updateMolInfo(selectedMol);
+          // 更新图例
+          updateLegendByCurrentFilter();
+        });;
+
+      // X axis (features)
+      svg.append('g')
+        .selectAll('text')
+        .data(featureNames)
+        .join('text')
+        .attr('x', (d, i) => margin.left + i * cellW + cellW / 2 - 20)
+        .attr('y', margin.top - 20)
+        .attr('text-anchor', 'start')
+        .attr('transform', (d, i) => `rotate(-45,${margin.left + i * cellW + cellW / 2},${margin.top - 10})`)
+        .attr('font-size', '0.70em')
+        .attr('fill', '#222')
+        .text(d => d.replace(/_/g, ' '));
+
+      // Y axis (labels)
+      svg.append('g')
+        .selectAll('text')
+        .data(labelNames)
+        .join('text')
+        .attr('x', margin.left - 10)
+        .attr('y', (d, i) => margin.top + i * cellH + cellH / 2 + 5)
+        .attr('text-anchor', 'end')
+        .attr('font-size', '0.70em')
+        .attr('fill', '#222')
+        .text(d => d);
+
+      addColorBarLegend(
+        svg,
+        colorScale,
+        width - 40,
+        margin.top,
+        18,
+        n * cellH,
+        0,
+        maxVal,
+        '共现次数'
+      );
+
+    }
+    function renderOverviewCharts() {
+      const container = document.getElementById('overview-charts');
+      container.innerHTML = `
+        <div class="section-title">点击可筛选分子（在主页中查看），左侧可切换数据集和TopN数目</div>
+        <div class="section-title">标签分子数分布（全部138种类标签）</div>
+        ${getChartToolbarHTML('d3-label-bar-all')}
+        <div id="d3-label-bar-all"></div>
+        <div class="section-title">标签分子数分布</div>
+        ${getChartToolbarHTML('d3-label-bar')}
+        <div id="d3-label-bar"></div>
+        <div class="section-title">分子标签数分布</div>
+        ${getChartToolbarHTML('d3-tagnum-bar')}
+        <div id="d3-tagnum-bar"></div>
+        <div class="section-title">标签共现热力图</div>
+        ${getChartToolbarHTML('d3-coheatmap')}
+        <div id="d3-coheatmap"></div>
+        <div class="section-title">标签-特征热力图</div>
+        ${getChartToolbarHTML('d3-label-feature')}
+        <div id="d3-label-feature"></div>
+        <div class="section-title">标签和弦图</div>
+        ${getChartToolbarHTML('d3-chord')}
+        <div id="d3-chord"></div>
+        <div class="section-title">分子量小提琴图</div>
+        ${getChartToolbarHTML('d3-violin')}
+        <div id="d3-violin"></div>
+      `;
+      const maxLabelsToShow = topN; // 动态TopN
+      const labelStats = topNLabelIdx.map(i => ({
+        label: labelNames[i],
+        count: molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0),
+        idx: i
+      }));
+      const labelStatsAll = Array.from({ length: 138 }, (_, i) => ({
+        label: labelNames[i],
+        count: molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0),
+        idx: i
+      })).sort((a, b) => b.count - a.count);;
+      renderLabelBarChart(document.getElementById('d3-label-bar-all'), labelStatsAll, labelColors, idx => {
+        labelFilter = [idx];
+        syncLabelFilterUI();
+        render3D();
+        renderCooccurrenceRanking();
+        updateMolInfo(selectedMol);
+        updateLegendByCurrentFilter();
+      });
+      const tagNumDist = {};
+      molecules.forEach(m => {
+        const n = typeof m.label_nums === 'number' ? m.label_nums : m.labels.reduce((a, b) => a + b, 0);
+        tagNumDist[n] = (tagNumDist[n] || 0) + 1;
+      });
+      const nums = Object.keys(tagNumDist).map(Number);
+      const minNum = Math.min(...nums);
+      const maxNum = Math.max(...nums);
+      const tagNumData = [];
+      for (let i = minNum; i <= maxNum; ++i) {
+        tagNumData.push({ num: i, count: tagNumDist[i] || 0 });
+      }
+      // 渲染
+      const coMat = Array(maxLabelsToShow).fill(0).map(() => Array(maxLabelsToShow).fill(0));
+      molecules.forEach(m => {
+        for (let i = 0; i < maxLabelsToShow; i++) {
+          if (m.labels[topNLabelIdx[i]]) {
+            for (let j = 0; j < maxLabelsToShow; j++) {
+              if (m.labels[topNLabelIdx[j]]) coMat[i][j]++;
+            }
+          }
+        }
+      });
+      const topNLabelNames = topNLabelIdx.map(i => labelNames[i]);
+      // 标签-特征热力图
+      const featureNames = data.metadata.feature_names;
+      const labelFeatureMat = Array(topN).fill(0).map(() => Array(featureNames.length).fill(0));
+      molecules.forEach(m => {
+        topNLabelIdx.forEach((li, i) => {
+          if (m.labels[li]) {
+            for (let j = 0; j < featureNames.length; ++j) {
+              if (m.features[j]) labelFeatureMat[i][j]++;
+            }
+          }
+        });
+      });
+      renderLabelFeatureHeatmap(document.getElementById('d3-label-feature'), labelFeatureMat, topNLabelNames, featureNames);
+      renderLabelBarChart(document.getElementById('d3-label-bar'), labelStats.slice(0, maxLabelsToShow), labelColors, idx => {
+        labelFilter = [idx];
+        syncLabelFilterUI();
+        render3D();
+        renderCooccurrenceRanking();
+        updateMolInfo(selectedMol);
+        updateLegendByCurrentFilter();
+      });
+      renderTagNumHistogram(document.getElementById('d3-tagnum-bar'), tagNumData);
+      renderCooccurrenceHeatmap(
+        document.getElementById('d3-coheatmap'),
+        coMat,
+        topNLabelNames,
+        (i, j) => {
+          labelFilter = [topNLabelIdx[i], topNLabelIdx[j]];
+          syncLabelFilterUI();
+          render3D();
+          renderCooccurrenceRanking();
+          updateMolInfo(selectedMol);
+          updateLegendByCurrentFilter();
+        }
+      );
+
+      renderChordDiagram(
+        document.getElementById('d3-chord'),
+        coMat,
+        topNLabelNames
+      );
+      const groups = topNLabelIdx.map(i => molecules.filter(m => m.labels[i]).map(m => m.properties.molecular_weight));
+      const groupNames = topNLabelIdx.map(i => labelNames[i]);
+      const groupColors = topNLabelIdx.map(i => labelColors[i]);
+      renderViolinPlot(document.getElementById('d3-violin'), groups, groupNames, groupColors);
+    }
+
+    // 放大图表
+    function enlargeChart(chartId) {
+      const chartDiv = document.getElementById(chartId);
+      const modal = document.getElementById('overview-modal');
+      modal.innerHTML = '';
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      modal.style.paddingTop = '80px'; // 给顶部留空间，避免被菜单遮挡
+      const svg = chartDiv.querySelector('svg');
+      if (svg) {
+        const clone = svg.cloneNode(true);
+        clone.setAttribute('width', 900);
+        clone.setAttribute('height', 900);
+        clone.setAttribute('viewBox', '0 0 900 900');
+        clone.style.display = 'block';
+        clone.style.margin = '60px auto 40px auto'; // 上下留白，居中
+        clone.style.background = '#fff';
+        modal.appendChild(clone);
+      }
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '关闭';
+      closeBtn.className = 'copy-btn';
+      closeBtn.style.position = 'absolute';
+      closeBtn.style.top = '40px';
+      closeBtn.style.right = '80px';
+      closeBtn.onclick = () => { modal.style.display = 'none'; };
+      modal.appendChild(closeBtn);
+    }
+
+    function downloadSVG(chartId, filename) {
+      const svg = document.getElementById(chartId).querySelector('svg');
+      if (!svg) return;
+      const serializer = new XMLSerializer();
+      const source = serializer.serializeToString(svg);
+      const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function computeCooccurrenceRanking() {
+      const labelCount = labelNames.length;
+      const featureCount = data.metadata.feature_names.length;
+      const pairCounts = [];
+
+      // 标签-标签对
+      for (let i = 0; i < labelCount; ++i) {
+        for (let j = i + 1; j < labelCount; ++j) {
+          let count = molecules.filter(m => m.labels[i] && m.labels[j]).length;
+          pairCounts.push({ type: 'label-label', i, j, count });
+        }
+      }
+      // 标签-特征对
+      for (let i = 0; i < labelCount; ++i) {
+        for (let j = 0; j < featureCount; ++j) {
+          let count = molecules.filter(m => m.labels[i] && m.features[j]).length;
+          pairCounts.push({ type: 'label-feature', i, j, count });
+        }
+      }
+      // 排序取前12
+      pairCounts.sort((a, b) => b.count - a.count);
+      return pairCounts.slice(0, 12);
+    }
+
+    function renderCooccurrenceRanking() {
+      const ranking = computeCooccurrenceRanking();
+      const ul = document.getElementById('cooccurrence-ranking');
+      ul.innerHTML = '';
+      ranking.forEach(item => {
+        const li = document.createElement('li');
+        let isSelected = false;
+        if (item.type === 'label-label') {
+          li.textContent = `${labelNames[item.i]} + ${labelNames[item.j]} : ${item.count}`;
+          li.onclick = () => {
+            labelFilter = [item.i, item.j];
+            featureFilter = [];
+            syncLabelFilterUI();
+            render3D();
+            renderCooccurrenceRanking(); // 重新渲染高亮
+          };
+          // 判断是否当前选中
+          isSelected = labelFilter.length === 2 && labelFilter.includes(item.i) && labelFilter.includes(item.j) && featureFilter.length === 0;
+        } else {
+          li.textContent = `${labelNames[item.i]} + ${data.metadata.feature_names[item.j]} : ${item.count}`;
+          li.onclick = () => {
+            labelFilter = [item.i];
+            featureFilter = [item.j];
+            syncLabelFilterUI();
+            render3D();
+            renderCooccurrenceRanking();
+            renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+          };
+          isSelected = labelFilter.length === 1 && labelFilter[0] === item.i && featureFilter.length === 1 && featureFilter[0] === item.j;
+        }
+        if (isSelected) li.classList.add('selected');
+        ul.appendChild(li);
+      });
+    }
+    function renderComparePage() {
+      const container = document.getElementById('compare-result');
+      if (!compareList.length) {
+        container.innerHTML = '<div style="color:#aaa;">在分子详情页可“加入对比”</div>';
+        return;
+      }
+      let html = '';
+      compareList.forEach(idx => {
+        const mol = molecules[idx];
+        html += `
+      <div class="compare-card" onclick="updateMolInfo(${idx});">
+        <button class="remove-btn" title="从对比中移除"
+          onclick="event.stopPropagation();removeFromCompare(${idx})">&times;</button>
+        <canvas id="compare-mol2d-${idx}" width="120" height="90" style="background:#fff;border-radius:10px;box-shadow:0 1px 4px #e39ff622;margin-bottom:0.7em;"></canvas>
+        <div style="font-family:'JetBrains Mono';font-size:1.01em;font-weight:700;color:#6c4bdb;margin-bottom:0.3em;word-break:break-all;">${mol.smiles}</div>
+        <div style="font-size:0.85em;color:#888;margin-bottom:0.3em;">分子量: ${mol.properties.molecular_weight}</div>
+        <div class="tag-cloud smell">${mol.labels.map((v, i) => v ? `<span class="tag" style="border-color:${labelColors[i]};color:${labelColors[i]};">${labelNames[i]}</span>` : '').join('')}</div>
+        <div class="tag-cloud feature">${mol.features.map((v, i) => v ? `<span class="tag">${(data.metadata.feature_names[i] || i).replace(/_/g, ' ')}</span>` : '').join('')}</div>
+      </div>`;
+      });
+      container.innerHTML = html;
+      // 渲染2D分子图
+      compareList.forEach(idx => {
+        SmilesDrawer.parse(molecules[idx].smiles, function (tree) {
+          const drawer = new SmilesDrawer.Drawer({ width: 120, height: 90, theme: 'light', padding: 8 });
+          drawer.draw(tree, `compare-mol2d-${idx}`, 'light', false);
+        });
+      });
+    }
+    function clearAllFilters() {
+      labelFilter = [];
+      featureFilter = [];
+      syncLabelFilterUI();
+      syncFeatureFilterUI();
+      render3D();
+      renderCooccurrenceRanking();
+      renderOverviewCharts();
+
+    }
+    function updateLegendByCurrentFilter() {
+      const mwArr = molecules
+        .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
+        .map(m => m.properties.molecular_weight);
+      renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+    }
+    // 挂到window，确保HTML onclick能访问
+    window.enlargeChart = enlargeChart;
+    window.downloadSVG = downloadSVG;
+    window.onhashchange = function () {
+      const page = location.hash.replace('#', '') || 'home';
+      switchPage(page);
+    };
+    window.addToCompare = function (idx) {
+      if (!compareList.includes(idx)) {
+        compareList.push(idx);
+        renderComparePage();
+      }
+    };
+    window.clearAllFilters = clearAllFilters;
+    window.removeFromCompare = function (idx) {
+      compareList = compareList.filter(i => i !== idx);
+      renderComparePage();
+    };
+
+    window.addEventListener('resize', () => {
+      if (renderer && camera) {
+        const w = document.getElementById('main-3d').clientWidth;
+        const h = document.getElementById('main-3d').clientHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+    });
+    // 如果在InitUI里渲染导航栏会无法点击help-btn
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.onclick = () => {
+        location.hash = btn.dataset.page;
+      };
+    });
+  </script>
+  <!--
+  参考/致谢：
+  1. http://projector.tensorflow.org
+  2. https://threejs.org/examples/webgl_points_billboards
+  3. https://github.com/ARY2260/openpom
+-->
+</body>
+
+</html>
