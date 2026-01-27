@@ -1023,15 +1023,13 @@
       <div style="margin-bottom:0.2em;">
         <label for="dataset-select" style="font-size:0.97em;">数据集选择</label>
         <select id="dataset-select" style="margin-left:0.5em;">
-          <!-- <option value="./data/gs_lf_100.json">100</option> -->
-          <!-- <option value="./data/gs_lf_250.json">250</option> -->
-          <!-- <option value="./data/gs_lf_512.json" selected>512</option> -->
-          <!-- <option value="./data/gs_lf_1024.json">1024</option> -->
-          <!-- <option value="./data/gs_lf_4983.json">4983</option> -->
+          <option value="./data/gs_lf_100.json">100</option>
+          <option value="./data/gs_lf_250.json">250</option>
+          <option value="./data/gs_lf_512.json">512</option>
+          <option value="./data/gs_lf_1024.json">1024</option>
           <!-- github有上传文件限制，本地server可以解开注释，并把相关json文件放在HTML文件同路径中 -->
                    <option value="./data/gs_lf_2048.json">2048</option>
-                   <option value="./data/gs_lf_4096.json">4096</option>
-                   <option value="./data/gs_lf_4983.json"  selected>4983</option>
+                   <option value="./data/gs_lf_4983.json" selected>4983</option>
         </select>
       </div>
       <div class="section-title">TopN聚焦模式切换</div>
@@ -1208,7 +1206,7 @@
     let molecules = [];
     let labelNames = [];
     //let similarity = {};
-    let currentEmbeddingType = "fp_embeddings";
+    let currentEmbeddingType = "fp_coords";
     let currentEmbedding = "pca";
     let selectedMol = 0; // 当前选中分子索引,右侧信息面板显示
     let mwMax = 1000;
@@ -1681,7 +1679,7 @@
       const container = document.getElementById('canvas-container');
       // 2个画布：0为fp_coords，1为lb_coords
       const embNames = ['结构空间', '标签空间'];
-      const embTypes = ['fp_embeddings', 'lb_embeddings'];
+      const embTypes = ['fp_coords', 'lb_coords'];
       container.innerHTML = '';
       for (let i = 0; i < 2; ++i) {
         const div = document.createElement('div');
@@ -1764,7 +1762,7 @@
           container._renderer = null;
         }
       }
-      const embTypes = ['fp_embeddings', 'lb_embeddings'];
+      const embTypes = ['fp_coords', 'lb_coords'];
       for (let i = 0; i < 2; ++i) {
         // 放大时只渲染被放大的画布
         if (enlargedCanvas !== -1 && enlargedCanvas !== i) continue;
@@ -2260,7 +2258,7 @@
         .attr('text-anchor', 'middle')
         .attr('font-size', '0.98em')
         .attr('fill', '#222')
-        .text(label || '共现次数');
+        .text(label || '共现数');
     }
     // 推荐列表加2D分子图
     function renderSimList(id, simArr, type) {
@@ -2555,7 +2553,7 @@
         .attr('text-anchor', 'middle')
         .attr('font-size', '0.98em')
         .attr('fill', '#888')
-        .text(`每个格表示Top${topN}标签下标签共现次数`);
+        .text(`每个格表示Top${topN}标签下标签共现数`);
 
       const maxVal = d3.max(coMat.flat());
       const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([0, maxVal]);
@@ -2621,7 +2619,7 @@
         n * cellSize, // height，和热力图高度一致
         0,
         maxVal,
-        '共现次数'
+        '共现数'
       );
     }
     function renderChordDiagram(container, matrix, labelNames) {
@@ -2649,7 +2647,7 @@
         .attr('text-anchor', 'middle')
         .attr('font-size', '0.98em')
         .attr('fill', '#888')
-        .text(`每条弦表示Top${topN}标签间的共现关系，弦宽代表共现次数`);
+        .text(`每条弦表示Top${topN}标签间的共现关系，弦宽代表共现数`);
       const g = svg.append('g')
         .attr('transform', `translate(${width / 2},${height / 2})`);
 
@@ -2976,7 +2974,7 @@
         .attr('text-anchor', 'middle')
         .attr('font-size', '0.98em')
         .attr('fill', '#888')
-        .text(`每个格表示Top${topN}标签下特征出现次数`);
+        .text(`每个格表示Top${topN}标签下特征出现数`);
 
       // Tooltip
       let tooltip = d3.select(container).select('.d3-tooltip');
@@ -3073,7 +3071,7 @@
         n * cellH,
         0,
         maxVal,
-        '共现次数'
+        '共现数'
       );
 
     }

@@ -26,7 +26,7 @@ import argparse
 def args_parser():
     # 设置命令行参数解析
     parser = argparse.ArgumentParser(description="数据处理脚本")
-    parser.add_argument("--size", type=int, default=4983, help="处理的数据大小")
+    parser.add_argument("--size", type=int, default=2048, help="处理的数据大小")
     parser.add_argument(
         "--input",
         type=str,
@@ -306,7 +306,7 @@ def main(args):
     }
 
     # 写入文件
-    with open(f"gs_lf_{args.size}.json", "w") as f:
+    with open(f"./data/gs_lf_{args.size}.json", "w") as f:
         json.dump(output, f, indent=2)
 
 
