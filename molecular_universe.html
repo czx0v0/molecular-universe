@@ -1023,14 +1023,15 @@
       <div style="margin-bottom:0.2em;">
         <label for="dataset-select" style="font-size:0.97em;">数据集选择</label>
         <select id="dataset-select" style="margin-left:0.5em;">
-          <option value="./data/gs_lf_100.json">100</option>
-          <option value="./data/gs_lf_250.json">250</option>
-          <option value="./data/gs_lf_512.json" selected>512</option>
-          <option value="./data/gs_lf_1024.json">1024</option>
-          <option value="./data/gs_lf_4983.json">4983</option>
+          <!-- <option value="./data/gs_lf_100.json">100</option> -->
+          <!-- <option value="./data/gs_lf_250.json">250</option> -->
+          <!-- <option value="./data/gs_lf_512.json" selected>512</option> -->
+          <!-- <option value="./data/gs_lf_1024.json">1024</option> -->
+          <!-- <option value="./data/gs_lf_4983.json">4983</option> -->
           <!-- github有上传文件限制，本地server可以解开注释，并把相关json文件放在HTML文件同路径中 -->
-          <!--          <option value="gs_lf_2048.json">2048</option>-->
-          <!--          <option value="gs_lf_4096.json">4096</option>-->
+                   <option value="./data/gs_lf_2048.json">2048</option>
+                   <option value="./data/gs_lf_4096.json">4096</option>
+                   <option value="./data/gs_lf_4983.json"  selected>4983</option>
         </select>
       </div>
       <div class="section-title">TopN聚焦模式切换</div>
@@ -1206,8 +1207,8 @@
     let data = null;
     let molecules = [];
     let labelNames = [];
-    let similarity = {};
-    let currentEmbeddingType = "fp_coords";
+    //let similarity = {};
+    let currentEmbeddingType = "fp_embeddings";
     let currentEmbedding = "pca";
     let selectedMol = 0; // 当前选中分子索引,右侧信息面板显示
     let mwMax = 1000;
@@ -1250,13 +1251,13 @@
     let labelColors = [];
 
     // 读取数据
-    fetch('./data/gs_lf_512.json')
+    fetch('./data/gs_lf_4983.json')
       .then(res => res.json())
       .then(json => {
         data = json;
         molecules = data.molecules;
         labelNames = data.metadata.label_names;
-        similarity = data.similarity_matrix;
+        //similarity = data.similarity_matrix;
         labelColors = generateLabelColors(labelNames.length);
         initUI();
         updateCanvasLayout();
@@ -1600,7 +1601,7 @@
             data = json;
             molecules = data.molecules;
             labelNames = data.metadata.label_names;
-            similarity = data.similarity_matrix;
+            //similarity = data.similarity_matrix;
             labelColors = generateLabelColors(labelNames.length);
             // 重新初始化所有UI和可视化
             initUI();
@@ -1680,7 +1681,7 @@
       const container = document.getElementById('canvas-container');
       // 2个画布：0为fp_coords，1为lb_coords
       const embNames = ['结构空间', '标签空间'];
-      const embTypes = ['fp_coords', 'lb_coords'];
+      const embTypes = ['fp_embeddings', 'lb_embeddings'];
       container.innerHTML = '';
       for (let i = 0; i < 2; ++i) {
         const div = document.createElement('div');
@@ -1763,7 +1764,7 @@
           container._renderer = null;
         }
       }
-      const embTypes = ['fp_coords', 'lb_coords'];
+      const embTypes = ['fp_embeddings', 'lb_embeddings'];
       for (let i = 0; i < 2; ++i) {
         // 放大时只渲染被放大的画布
         if (enlargedCanvas !== -1 && enlargedCanvas !== i) continue;
@@ -2150,8 +2151,8 @@
         }
       });
       // 推荐
-      renderSimList('structural-sim', similarity.structural[idx], 'Tanimoto');
-      renderSimList('label-sim', similarity.label[idx], 'Jaccard');
+      //renderSimList('structural-sim', similarity.structural[idx], 'Tanimoto');
+      //renderSimList('label-sim', similarity.label[idx], 'Jaccard');
 
       // 特征标签云
       const featureTagCloud = document.getElementById('feature-tag-cloud');

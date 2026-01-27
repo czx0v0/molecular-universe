@@ -26,11 +26,11 @@ import argparse
 def args_parser():
     # 设置命令行参数解析
     parser = argparse.ArgumentParser(description="数据处理脚本")
-    parser.add_argument("--size", type=int, default=1024, help="处理的数据大小")
+    parser.add_argument("--size", type=int, default=4983, help="处理的数据大小")
     parser.add_argument(
         "--input",
         type=str,
-        default="./code/preprocess/curated_GS_LF_merged_4983.csv",
+        default="./preprocess/curated_GS_LF_merged_4983.csv",
         help="输入文件路径",
     )
     args = parser.parse_args()
