@@ -73,7 +73,7 @@
 
 ## 数据集
 
-1. 原始数据集：（OpenPOM）：(https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv)[https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv]
+1. 原始数据集：[OpenPOM](https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv)
 2. 主数据文件：在data文件夹中。
 3. json数据格式说明：
 
