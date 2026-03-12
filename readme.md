@@ -131,11 +131,11 @@
 ```
 
 2. 数据转换
+
    1. 见 `./preprocess/data_preprocess.py`文件，用于将csv数据转化为json数据，借助rdkit、pubchempy等。
    2. 使用方式：
       1. 可直接运行py文件，默认生成的数据大小为512个分子。
       2. 如果需要更改生成数据大小，可传入参数运行，如 `python3 data_preprocess.py --size 250`。
-3. 
 
 ### 依赖环境
 
@@ -171,7 +171,7 @@
 
 #### 2026.01.27(v0.2.1)
 
-- 更新第三版data_preprocess处理，去除similarity_matrix。
+- 更新第三版data_preprocess处理，暂时去除similarity_matrix。
 - 修复HTML文件的问题。
 
 #### 2026.03.12(v0.2.3)
