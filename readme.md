@@ -23,8 +23,7 @@
 3. 分子对比：对比当前筛选分子，展示分子结构、SMILES、分子量、标签与特征。
 4. 数据概览：签分子数分布条形图，以及TopN标签下的标签分子数分布条形图、分子标签数分布条形图、标签共现热力图、标签-特征热力图、标签共现和弦图、分子量小提琴图等统计图表，支持交互筛选、SVG导出与放大。
 5. 信息检索：支持SMILES或标签名检索分子。
-6. 结构/标签相似推荐：自动推荐结构或标签相似的分子，支持一键加入对比。
-7. 主题切换：支持浅色/深色主题。
+6. 主题切换：支持浅色/深色主题。
 
 ## 界面操作说明
 
@@ -53,8 +52,6 @@
 ### 右侧信息面板
 
 - 分子详情：显示分子SMILES、IUPAC名称、2D结构图、气味标签云和特征标签云。其中气味标签云和特征标签云可点击筛选。点击复制可复制分子SMILES。点击加入对比可将分子加入对比。
-- 结构相似推荐：展示与当前分子结构相似的5个分子，点击加号可将分子加入对比。
-- 标签相似推荐：展示与当前分子气味标签相似的5个分子，点击加号可将分子加入对比。
 
 ## 主界面视觉编码
 
@@ -76,12 +73,13 @@
 
 ## 数据集
 
-1. 主数据文件：在data文件夹中，为了防止Appendix的大小过大，只提供了100、250、512三种大小的数据集，如果需要增加数据集中分子数目，可以参考 `2.数据转换`实现，生成新的json文件并在molecular_universe.html文件中解开/增加对应选项的注释。
-2. json数据格式说明：
+1. 原始数据集：（OpenPOM）：(https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv)[https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv]
+2. 主数据文件：在data文件夹中。
+3. json数据格式说明：
+
    1. labels/features：与 label_names/feature_names 顺序一一对应。
    2. fp_coords/lb_coords：结构/标签空间的降维坐标。
-   3. similarity_matrix：结构和标签空间的分子两两相似度。
-   4. 详细格式如下：
+   3. 详细格式如下：
 
 ```json
 {
@@ -128,11 +126,7 @@
       }
     },
     // ...（其他分子）
-  ],
-  "similarity_matrix": {                            // 预计算相似度
-    "structural": [[...]],                          // 基于ECFP4的Tanimoto矩阵，用于表示结构相似度
-    "label": [[...]]                                // 基于Jaccard相似度矩阵，用于表示标签相似度
-  }
+  ]
 }
 ```
 
@@ -140,10 +134,8 @@
    1. 见 `./preprocess/data_preprocess.py`文件，用于将csv数据转化为json数据，借助rdkit、pubchempy等。
    2. 使用方式：
       1. 可直接运行py文件，默认生成的数据大小为512个分子。
-      2. 如果需要更改生成数据大小，可修改 `parser.add_argument('--size', type=int, default=512, help='处理的数据大小')`中default的值后运行，或通过命令cd进入preprocess文件夹，传入参数运行，如 `python3 data_process.py --size 250`。
-3. 原始csv数据集：
-   1. 来源网站（openpom）：
-      1. https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv
+      2. 如果需要更改生成数据大小，可传入参数运行，如 `python3 data_preprocess.py --size 250`。
+3. 
 
 ### 依赖环境
 
@@ -157,7 +149,7 @@
 - D3.js
 - SmilesDrawer
 - Embedding Projector
-- OpenPOM - Open Principal Odor Map, Aryan Amit Barsainyan and Ritesh Kumar and Pinaki Saha and Michael Schmuker
+- [OpenPOM - Open Principal Odor Map, Aryan Amit Barsainyan and Ritesh Kumar and Pinaki Saha and Michael Schmuker](https://github.com/BioMachineLearning/openpom)
 - A Principal Odor Map Unifies Diverse Tasks in Human Olfactory Perception.
   Science381,999-1006(2023).DOI: 10.1126/science.ade4401
 - 其他开源数据与可视化工具的贡献者
@@ -172,12 +164,24 @@
 
 - 修改源，防止网络问题无法初始化数据。
 
-#### 2026.01.24
+#### 2026.01.24(v0.2.0)
 
-- 用第二版data_preprocess处理，修改t-SNE旧版的问题。
+- 更新第二版data_preprocess处理，修改t-SNE。
 - 分子指纹统一为1024维。
 
-### 后续
+#### 2026.01.27(v0.2.1)
 
-1. 支持embeddings和自定义文件和谱图文件
-2. embeddings等json文件改名和效率提升
+- 更新第三版data_preprocess处理，去除similarity_matrix。
+- 修复HTML文件的问题。
+
+#### 2026.03.12(v0.2.3)
+
+- 修复github pages和本地的json数据存放位置不一致导致的数据读取失败问题。
+
+### 后续计划
+
+1. 支持深度学习embeddings和自定义文件可视化。
+2. 结合轻量索引和按需加载引入更多数据。
+3. 支持更多类型的科学数据如谱图文件可视化。
+4. 实现更高效的相似检索算法。
+5. 接入大语言模型API。

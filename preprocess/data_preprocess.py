@@ -6,6 +6,9 @@ os.environ["OMP_NUM_THREADS"] = "1"
 import warnings
 
 warnings.filterwarnings("ignore")
+warnings.filterwarnings(
+    "ignore", message=".*please use MorganGenerator.*", category=DeprecationWarning
+)
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors, DataStructs
@@ -23,11 +26,11 @@ import argparse
 def args_parser():
     # 设置命令行参数解析
     parser = argparse.ArgumentParser(description="数据处理脚本")
-    parser.add_argument("--size", type=int, default=1024, help="处理的数据大小")
+    parser.add_argument("--size", type=int, default=2048, help="处理的数据大小")
     parser.add_argument(
         "--input",
         type=str,
-        default="curated_GS_LF_merged_4983.csv",
+        default="./preprocess/curated_GS_LF_merged_4983.csv",
         help="输入文件路径",
     )
     args = parser.parse_args()
@@ -148,7 +151,7 @@ def main(args):
     all_fingerprints = []
     all_labels = []
 
-    # 只处理前250个分子
+    # 只处理前k个分子
     for _, row in tqdm(df.head(args.size).iterrows(), total=args.size):
         smiles = row.iloc[0]
         descriptors = row.iloc[1]
@@ -178,7 +181,7 @@ def main(args):
         iupac_name = get_iupac_name(smiles)
 
         # 生成ECFP4指纹
-        fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
+        fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=1024)
         all_fingerprints.append(fp)
         all_labels.append(labels)
 
@@ -203,37 +206,68 @@ def main(args):
         )
 
     # 指纹降维
-    fingerprint_matrix = np.array([np.zeros(2048, dtype=int) for _ in all_fingerprints])
+    fingerprint_matrix = np.array([np.zeros(1024, dtype=int) for _ in all_fingerprints])
     for i, fp in enumerate(all_fingerprints):
         DataStructs.ConvertToNumpyArray(fp, fingerprint_matrix[i])
-
-    pca = PCA(n_components=3)
-    pca_coords = pca.fit_transform(fingerprint_matrix)
-
-    tsne = TSNE(n_components=3, random_state=42)
-    tsne_coords = tsne.fit_transform(fingerprint_matrix)
-
-    umap = UMAP(n_components=3, random_state=42)
-    umap_coords = umap.fit_transform(fingerprint_matrix)
-
     # 标签降维
     label_matrix = np.array(all_labels, dtype=float)
-    lb_pca = PCA(n_components=3).fit_transform(label_matrix)
-    lb_tsne = TSNE(n_components=3, random_state=42).fit_transform(label_matrix)
-    lb_umap = UMAP(n_components=3, random_state=42).fit_transform(label_matrix)
+
+    pca = PCA(
+        n_components=3,
+        random_state=42,
+        svd_solver="auto",
+        whiten=False,
+        tol=0.0,
+        iterated_power="auto",
+    )
+    fp_pca_coords = pca.fit_transform(fingerprint_matrix)
+    lb_pca_coords = pca.fit_transform(label_matrix)
+
+    tsne = TSNE(
+        n_components=3,
+        random_state=42,
+        verbose=0,
+        max_iter=1200,
+        learning_rate="auto",
+        perplexity=30,  # 困惑度（5-50）
+        early_exaggeration=12.0,  # 早期放大
+        n_iter_without_progress=300,  # 提前停止
+        min_grad_norm=1e-7,  # 梯度阈值
+        metric="euclidean",  # 距离度量
+        init="random",
+    )
+    fp_tsne_coords = tsne.fit_transform(fingerprint_matrix)
+    lb_tsne_coords = tsne.fit_transform(label_matrix)
+
+    umap = UMAP(
+        n_components=3,
+        random_state=42,
+        n_epochs=300,
+        spread=1.0,
+        n_neighbors=15,
+        min_dist=0.1,
+        metric="euclidean",
+        n_jobs=1,
+        repulsion_strength=1.0,  # 排斥强度
+        learning_rate=1.0,  # 学习率
+        densmap=False,  # 是否保持密度
+        verbose=False,
+    )
+    fp_umap_coords = umap.fit_transform(fingerprint_matrix)
+    lb_umap_coords = umap.fit_transform(label_matrix)
 
     # 添加降维坐标到分子数据
     for i, molecule in enumerate(molecules_data):
         molecule["label_nums"] = int(np.sum(molecule["labels"]))
-        molecule["fp_embeddings"] = {
-            "pca": pca_coords[i].tolist(),
-            "tsne": tsne_coords[i].tolist(),
-            "umap": umap_coords[i].tolist(),
+        molecule["fp_coords"] = {
+            "pca": fp_pca_coords[i].tolist(),
+            "tsne": fp_tsne_coords[i].tolist(),
+            "umap": fp_umap_coords[i].tolist(),
         }
-        molecule["lb_embeddings"] = {
-            "pca": lb_pca[i].tolist(),
-            "tsne": lb_tsne[i].tolist(),
-            "umap": lb_umap[i].tolist(),
+        molecule["lb_coords"] = {
+            "pca": lb_pca_coords[i].tolist(),
+            "tsne": lb_tsne_coords[i].tolist(),
+            "umap": lb_umap_coords[i].tolist(),
         }
         # 如果有旧的 'embeddings' 字段，删除
         if "embeddings" in molecule:
@@ -242,37 +276,37 @@ def main(args):
     # 计算相似度矩阵
     n = len(molecules_data)
 
-    # 结构相似度（Tanimoto）
-    structural_sim = np.zeros((n, n))
-    for i in range(n):
-        structural_sim[i] = DataStructs.BulkTanimotoSimilarity(
-            all_fingerprints[i], all_fingerprints
-        )
+    # # 结构相似度（Tanimoto）
+    # structural_sim = np.zeros((n, n))
+    # for i in range(n):
+    #     structural_sim[i] = DataStructs.BulkTanimotoSimilarity(
+    #         all_fingerprints[i], all_fingerprints
+    #     )
 
-    # 标签相似度（Jaccard）
-    label_matrix = np.array(all_labels, dtype=bool)
-    intersection = np.dot(label_matrix, label_matrix.T)
-    sum_labels = label_matrix.sum(axis=1)
-    union = sum_labels[:, None] + sum_labels[None, :] - intersection
-    jaccard_sim = np.divide(
-        intersection,
-        union,
-        out=np.zeros_like(intersection, dtype=float),  # 修正这里
-        where=union != 0,
-    )
+    # # 标签相似度（Jaccard）
+    # label_matrix = np.array(all_labels, dtype=bool)
+    # intersection = np.dot(label_matrix, label_matrix.T)
+    # sum_labels = label_matrix.sum(axis=1)
+    # union = sum_labels[:, None] + sum_labels[None, :] - intersection
+    # jaccard_sim = np.divide(
+    #     intersection,
+    #     union,
+    #     out=np.zeros_like(intersection, dtype=float),  # 修正这里
+    #     where=union != 0,
+    # )
 
     # 构建最终JSON
     output = {
         "metadata": {"label_names": label_names, "feature_names": feature_names},
         "molecules": molecules_data,
-        "similarity_matrix": {
-            "structural": structural_sim.tolist(),
-            "label": jaccard_sim.tolist(),
-        },
+        # "similarity_matrix": {
+        #     "structural": structural_sim.tolist(),
+        #     "label": jaccard_sim.tolist(),
+        # },
     }
 
     # 写入文件
-    with open(f"gs_lf_{args.size}.json", "w") as f:
+    with open(f"./data/gs_lf_{args.size}.json", "w") as f:
         json.dump(output, f, indent=2)
 
 
