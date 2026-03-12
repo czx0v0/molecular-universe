@@ -1030,13 +1030,12 @@
       <div style="margin-bottom:0.2em;">
         <label for="dataset-select" style="font-size:0.97em;">数据集选择</label>
         <select id="dataset-select" style="margin-left:0.5em;">
-          <option value="./data/gs_lf_100.json">100</option>
-          <option value="./data/gs_lf_250.json">250</option>
-          <option value="./data/gs_lf_512.json">512</option>
-          <option value="./data/gs_lf_1024.json">1024</option>
-          <!-- github有上传文件限制，本地server可以解开注释，并把相关json文件放在HTML文件同路径中 -->
-                   <option value="./data/gs_lf_2048.json">2048</option>
-                   <option value="./data/gs_lf_4983.json" selected>4983</option>
+          <option value="gs_lf_100.json">100</option>
+          <option value="gs_lf_250.json">250</option>
+          <option value="gs_lf_512.json">512</option>
+          <option value="gs_lf_1024.json">1024</option>
+          <option value="gs_lf_2048.json">2048</option>
+          <option value="gs_lf_4983.json" selected>4983</option>
         </select>
       </div>
       <div class="section-title">TopN聚焦模式切换</div>
@@ -1231,7 +1230,7 @@
     let currentPage = "home";
     let compareList = []; // 用于存储对比分子
     let renderer, scene, camera, controls, raycaster, mouse, particles, particleData;
-    let currentDataset = './data/gs_lf_512.json';
+    let currentDataset = 'gs_lf_4983.json';
 
     // 标签专属颜色生成(旧版颜色)
     // function generateLabelColors(n) {
@@ -1256,7 +1255,7 @@
     let labelColors = [];
 
     // 读取数据
-    fetch('./data/gs_lf_4983.json')
+    fetch('gs_lf_4983.json')
       .then(res => res.json())
       .then(json => {
         data = json;
