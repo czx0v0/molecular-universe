@@ -4,3 +4,9 @@ data/*
 tempCodeRunnerFile.py
 preprocess/*.csv
 *.json
+.cursor/*
+docs/*
+*.jsonl
+# .gitignore
+preprocess/__pycache__/*
+preprocess/ab_experiment_report.py

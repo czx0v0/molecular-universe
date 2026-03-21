@@ -1030,13 +1030,17 @@
       <div style="margin-bottom:0.2em;">
         <label for="dataset-select" style="font-size:0.97em;">数据集选择</label>
         <select id="dataset-select" style="margin-left:0.5em;">
+          <option value="gs_lf_4983.json">4983(单文件)</option>
+          <option value="gs_lf_4983.manifest.json" selected>4983(分片)</option>
           <option value="gs_lf_100.json">100</option>
           <option value="gs_lf_250.json">250</option>
           <option value="gs_lf_512.json">512</option>
           <option value="gs_lf_1024.json">1024</option>
           <option value="gs_lf_2048.json">2048</option>
-          <option value="gs_lf_4983.json" selected>4983</option>
         </select>
+        <div style="margin-top:0.35em;font-size:0.78rem;color:#888;line-height:1.35;max-width:22em;">
+          数据路径与模式说明见右上角 <b>?</b> 帮助。
+        </div>
       </div>
       <div class="section-title">TopN聚焦模式切换</div>
       <div style="margin-bottom:0.2em;">
@@ -1082,6 +1086,17 @@
         <input id="mol-limit" type="range" min="10" max="5000" value="1000" step="10" class="styled-range">
         <span id="mol-limit-range-val" class="range-val">1000</span>
       </div>
+      <div class="section-title">渲染模式</div>
+      <select id="render-mode-select" style="margin-bottom:0.5em;">
+        <option value="hybrid_lod">hybrid_lod（推荐）</option>
+        <option value="full_image">full_image（压力模式）</option>
+        <option value="chunk_mode" selected>chunk_mode（分片加载）</option>
+      </select>
+      <div class="section-title">性能实验</div>
+      <button id="run-sample-btn" class="copy-btn" style="font-size:0.90rem;padding:0.25em 0.8em;">采样20秒</button>
+      <button id="export-perf-btn" class="copy-btn" style="font-size:0.90rem;padding:0.25em 0.8em;margin-top:0.3em;">导出性能日志JSON</button>
+      <button id="clear-perf-btn" class="copy-btn" style="font-size:0.90rem;padding:0.25em 0.8em;margin-top:0.3em;">清空性能日志</button>
+      <div id="perf-summary" style="margin-top:0.35em;font-size:0.8rem;color:#6c4bdb;white-space:pre-line;"></div>
     </div>
     <!-- SPA主区（只放主内容区） -->
     <div id="spa-main">
@@ -1132,10 +1147,10 @@
         <div class="section-title">分子特征标签云</div>
         <div id="feature-tag-cloud" class="tag-cloud"></div>
       </div>
-      <!-- <div class="section-title">结构相似推荐</div> -->
-      <!-- <ul class="sim-list" id="structural-sim" style="cursor:pointer;"></ul> -->
-      <!-- <div class="section-title">标签相似推荐</div> -->
-      <!-- <ul class="sim-list" id="label-sim" style="cursor:pointer;"></ul> -->
+      <div class="section-title">结构相似推荐</div>
+      <ul class="sim-list" id="structural-sim" style="cursor:pointer;"></ul>
+      <div class="section-title">标签相似推荐</div>
+      <ul class="sim-list" id="label-sim" style="cursor:pointer;"></ul>
     </div>
     <!-- 问号弹窗 -->
     <div class="help-popover" id="help-popover">
@@ -1152,7 +1167,7 @@
         </ul>
         <li><b>左侧操作面板</b></li>
         <ul>
-          <li><b>数据集选择</b>：可切换不同大小的数据集。</li>
+          <li><b>数据集选择</b>：默认读项目根目录；若根目录不存在会自动再尝试 <code>data/</code> 同名路径。单文件选 <code>*.json</code>，分片选 <code>*.manifest.json</code>。</li>
           <li><b>主题切换</b>：可切换浅色/深色主题。</li>
           <li><b>TopN聚焦模式</b>：可设置高频标签的数量，切换高亮模式。</li>
           <li><b>清空筛选</b>：可清空当前筛选。</li>
@@ -1163,6 +1178,10 @@
           <li><b>特征筛选</b>：可选择感兴趣的分子特征进行筛选。</li>
           <li><b>分子量范围滑块</b>：控制显示分子的最大分子量。</li>
           <li><b>分子数目上限滑块</b>：控制显示的最大分子数目。</li>
+          <li><b>渲染模式</b>：<code>hybrid_lod</code> 为混合 LOD；<code>full_image</code> 为压力测试；<code>chunk_mode</code> 为分片加载。分片失败时会弹窗询问是否回退单文件。</li>
+          <li><b>相似推荐</b>：优先读取邻居分片（TopK）。现在即使是 <code>hybrid_lod/full_image</code> 也会尝试自动挂载同名 manifest 的邻居数据；若没有邻居分片，推荐列表为空。</li>
+          <li><b>分子图显示</b>：<code>hybrid_lod/full_image</code> 才显示 LOD 分子图片；<code>chunk_mode</code> 以分片加载稳定性为主，不展示 LOD 分子图片（可配合 SMILES 显示）。</li>
+          <li><b>性能实验</b>：采样与导出性能日志，详见仓库 <code>docs/performance-benchmark.md</code>。</li>
         </ul>
         <li><b>右侧信息面板</b></li>
         <ul>
@@ -1230,7 +1249,496 @@
     let currentPage = "home";
     let compareList = []; // 用于存储对比分子
     let renderer, scene, camera, controls, raycaster, mouse, particles, particleData;
-    let currentDataset = 'gs_lf_4983.json';
+    let currentDataset = 'gs_lf_4983.manifest.json'; // 与 #dataset-select 默认 option 一致
+    let currentManifest = null;
+    let neighborManifest = null;
+    let moleculeChunkCache = new Map();
+    let neighborChunkCache = new Map();
+    let renderMode = "chunk_mode";
+    let lodLevelGlobal = 'far';
+    let loadStartAt = 0;
+    let latestLoadTimeMs = null;
+    const lodParseCache = new Map();
+    const perfLogs = [];
+    const runSessionId = `perf-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    /** 实验元数据：localStorage mu_experiment_meta（JSON 对象） + URL 参数 exp_*（URL 优先） */
+    function readExperimentMeta() {
+      let base = {};
+      try {
+        const raw = localStorage.getItem('mu_experiment_meta');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) base = parsed;
+        }
+      } catch (_) {
+        base = {};
+      }
+      try {
+        const u = new URL(window.location.href);
+        const pick = (key) => {
+          const v = u.searchParams.get(key);
+          return v != null && v !== '' ? v : undefined;
+        };
+        const fromUrl = {};
+        const id = pick('exp_id');
+        const run = pick('exp_run');
+        const note = pick('exp_note');
+        const host = pick('exp_host');
+        const git = pick('exp_git');
+        if (id !== undefined) fromUrl.experiment_id = id;
+        if (run !== undefined) fromUrl.run_label = run;
+        if (note !== undefined) {
+          try {
+            fromUrl.note = decodeURIComponent(note);
+          } catch (_) {
+            fromUrl.note = note;
+          }
+        }
+        if (host !== undefined) fromUrl.host = host;
+        if (git !== undefined) fromUrl.git_commit = git;
+        return { ...base, ...fromUrl };
+      } catch (_) {
+        return base;
+      }
+    }
+
+    const performanceLogger = {
+      frameTimes: [],
+      fpsSamples: [],
+      longTaskCount: 0,
+      longTaskTotalMs: 0,
+      webglContextLostCount: 0,
+      memoryPeakMb: 0,
+      sampleTimer: null,
+      sampleCountdownTimer: null,
+      sampleStartAt: 0,
+      observer: null,
+      beginSample() {
+        this.frameTimes = [];
+        this.fpsSamples = [];
+        this.longTaskCount = 0;
+        this.longTaskTotalMs = 0;
+        this.webglContextLostCount = 0;
+        this.memoryPeakMb = 0;
+        this.sampleStartAt = performance.now();
+        if (this.observer) {
+          this.observer.disconnect();
+          this.observer = null;
+        }
+        try {
+          this.observer = new PerformanceObserver((list) => {
+            list.getEntries().forEach((entry) => {
+              this.longTaskCount += 1;
+              this.longTaskTotalMs += entry.duration;
+            });
+          });
+          this.observer.observe({ entryTypes: ['longtask'] });
+        } catch (_) {
+          // 浏览器不支持 longtask 时静默降级
+        }
+      },
+      endSample(reason = 'manual') {
+        if (this.observer) {
+          this.observer.disconnect();
+          this.observer = null;
+        }
+        const frameP50 = percentile(this.frameTimes, 0.5);
+        const frameP95 = percentile(this.frameTimes, 0.95);
+        const frameP99 = percentile(this.frameTimes, 0.99);
+        const fpsAvg = this.fpsSamples.length
+          ? this.fpsSamples.reduce((a, b) => a + b, 0) / this.fpsSamples.length
+          : null;
+        const fpsP95 = percentile(this.fpsSamples, 0.95);
+        const row = {
+          session_id: runSessionId,
+          mode: renderMode,
+          dataset: currentDataset,
+          reason,
+          timestamp: new Date().toISOString(),
+          sample_ms: Math.round(performance.now() - this.sampleStartAt),
+          load_time_ms: latestLoadTimeMs,
+          render_fps_avg: fpsAvg ? Number(fpsAvg.toFixed(2)) : null,
+          render_fps_p95: fpsP95 ? Number(fpsP95.toFixed(2)) : null,
+          frame_time_ms_p50: frameP50,
+          frame_time_ms_p95: frameP95,
+          frame_time_ms_p99: frameP99,
+          long_task_count: this.longTaskCount,
+          long_task_total_ms: Number(this.longTaskTotalMs.toFixed(2)),
+          memory_peak_mb: this.memoryPeakMb ? Number(this.memoryPeakMb.toFixed(2)) : null,
+          webgl_context_lost_count: this.webglContextLostCount
+        };
+        const expMeta = readExperimentMeta();
+        if (expMeta && typeof expMeta === 'object' && Object.keys(expMeta).length) {
+          row.experiment = expMeta;
+        }
+        perfLogs.push(row);
+        return row;
+      },
+      onFrame(frameMs) {
+        if (frameMs <= 0 || frameMs > 1000) return;
+        this.frameTimes.push(frameMs);
+        this.fpsSamples.push(1000 / frameMs);
+        if (performance && performance.memory && performance.memory.usedJSHeapSize) {
+          const usedMb = performance.memory.usedJSHeapSize / (1024 * 1024);
+          this.memoryPeakMb = Math.max(this.memoryPeakMb, usedMb);
+        }
+      },
+      onWebglContextLost() {
+        this.webglContextLostCount += 1;
+      }
+    };
+
+    function downloadTextFile(filename, text, mimeType = 'text/plain') {
+      const blob = new Blob([text], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportPerfLogsAsJson() {
+      downloadTextFile(
+        `mu-performance-${Date.now()}.json`,
+        JSON.stringify(perfLogs, null, 2),
+        'application/json'
+      );
+    }
+
+    function percentile(values, p) {
+      if (!values.length) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const idx = Math.max(0, Math.min(sorted.length - 1, Math.floor(sorted.length * p) - 1));
+      return sorted[idx];
+    }
+
+    function buildPerfSummaryText() {
+      const rows = perfLogs;
+      const fps = rows.map(r => r.render_fps_avg).filter(v => typeof v === 'number');
+      const frame95 = rows.map(r => r.frame_time_ms_p95).filter(v => typeof v === 'number');
+      const longTasks = rows.map(r => r.long_task_count).filter(v => typeof v === 'number');
+      const mem = rows.map(r => r.memory_peak_mb).filter(v => typeof v === 'number');
+      return [
+        `样本数: ${rows.length}`,
+        `FPS 平均P50/P95: ${percentile(fps, 0.5) ?? '-'} / ${percentile(fps, 0.95) ?? '-'}`,
+        `帧时P95中位(ms): ${percentile(frame95, 0.5) ?? '-'}`,
+        `LongTask计数中位: ${percentile(longTasks, 0.5) ?? '-'}`,
+        `内存峰值中位(MB): ${percentile(mem, 0.5) ?? '-'}`
+      ].join('\n');
+    }
+
+    function runPerformanceSampling(seconds = 20) {
+      const runBtn = document.getElementById('run-sample-btn');
+      if (performanceLogger.sampleTimer) {
+        clearTimeout(performanceLogger.sampleTimer);
+        performanceLogger.sampleTimer = null;
+      }
+      if (performanceLogger.sampleCountdownTimer) {
+        clearInterval(performanceLogger.sampleCountdownTimer);
+        performanceLogger.sampleCountdownTimer = null;
+      }
+      performanceLogger.beginSample();
+      const startedAt = performance.now();
+      const updateSamplingText = () => {
+        const elapsedSec = Math.floor((performance.now() - startedAt) / 1000);
+        const remain = Math.max(0, seconds - elapsedSec);
+        setLoading(true, `性能采样中... ${remain}s`);
+        if (runBtn) runBtn.textContent = `采样中(${remain}s)`;
+      };
+      if (runBtn) runBtn.disabled = true;
+      updateSamplingText();
+      performanceLogger.sampleCountdownTimer = setInterval(updateSamplingText, 1000);
+      performanceLogger.sampleTimer = setTimeout(() => {
+        if (performanceLogger.sampleCountdownTimer) {
+          clearInterval(performanceLogger.sampleCountdownTimer);
+          performanceLogger.sampleCountdownTimer = null;
+        }
+        const row = performanceLogger.endSample('window');
+        const div = document.getElementById('perf-summary');
+        if (div) div.textContent = buildPerfSummaryText() + `\n最近样本模式: ${row.mode}`;
+        setLoading(false);
+        if (runBtn) {
+          runBtn.disabled = false;
+          runBtn.textContent = '采样20秒';
+        }
+        performanceLogger.sampleTimer = null;
+      }, seconds * 1000);
+    }
+
+    function setLoading(visible, text = '数据加载中...') {
+      const mask = document.getElementById('loading-mask');
+      mask.textContent = text;
+      mask.style.display = visible ? 'flex' : 'none';
+    }
+
+    function safeFeatureNames() {
+      return (data && data.metadata && data.metadata.feature_names) || [
+        "sulfur", "carboxylic_acid", "alkyl_four_carbon_chain", "ester", "phenyl",
+        "eight_atoms_or_fewer", "ether", "aldehyde", "hitrile", "thirteen_atoms_or_more",
+        "aromatic_nitrogen", "amine"
+      ];
+    }
+
+    function parseJsonl(text) {
+      return text
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => JSON.parse(line));
+    }
+
+    function getLodLevelByDistance(distance) {
+      if (distance < 75) return 'near';
+      if (distance < 135) return 'mid';
+      return 'far';
+    }
+
+    function drawSmilesToLodCanvas(smiles, canvasId, size) {
+      const drawTree = (tree) => {
+        try {
+          const drawer = new SmilesDrawer.Drawer({
+            width: size,
+            height: size,
+            theme: 'light',
+            padding: 3
+          });
+          drawer.draw(tree, canvasId, 'light', false);
+        } catch (_) {
+          // 忽略绘制失败，保留占位框
+        }
+      };
+      if (lodParseCache.has(smiles)) {
+        drawTree(lodParseCache.get(smiles));
+        return;
+      }
+      SmilesDrawer.parse(
+        smiles,
+        function (tree) {
+          lodParseCache.set(smiles, tree);
+          drawTree(tree);
+        },
+        function () {
+          // parse 失败保持占位
+        }
+      );
+    }
+
+    function datasetManifestPath(path) {
+      if (path.endsWith('.manifest.json')) return path;
+      if (path.endsWith('.json')) return path.replace(/\.json$/, '.manifest.json');
+      return path;
+    }
+
+    function datasetLegacyPath(path) {
+      if (path.endsWith('.manifest.json')) return path.replace(/\.manifest\.json$/, '.json');
+      return path;
+    }
+
+    function computeTopNStats() {
+      const labelCounts = labelNames.map((name, i) =>
+        molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0)
+      );
+      const labelStats = labelNames.map((name, i) => ({
+        label: name,
+        count: labelCounts[i],
+        idx: i
+      })).sort((a, b) => b.count - a.count);
+      topNLabelIdx = labelStats.slice(0, topN).map(x => x.idx);
+      labelPriority = Array(labelNames.length).fill(9999);
+      labelStats.forEach((obj, rank) => {
+        labelPriority[obj.idx] = rank;
+      });
+    }
+
+    function applyLoadedDataset(json) {
+      data = json;
+      molecules = data.molecules || [];
+      molecules.forEach((m, i) => {
+        if (typeof m.id !== 'number') m.id = i;
+      });
+      labelNames = data.metadata.label_names;
+      labelColors = generateLabelColors(labelNames.length);
+      computeTopNStats();
+      initUI();
+      updateCanvasLayout();
+      setTimeout(() => {
+        updateMolInfo(0);
+      }, 0);
+      renderCooccurrenceRanking();
+      render3D();
+      const mwArr = molecules.map(m => (m.properties && m.properties.molecular_weight) || 0);
+      if (mwArr.length) {
+        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      }
+      const div = document.getElementById('perf-summary');
+      latestLoadTimeMs = loadStartAt ? Math.round(performance.now() - loadStartAt) : null;
+      if (div) {
+        div.textContent = [
+          `当前模式: ${renderMode}`,
+          `当前数据: ${currentDataset}`,
+          `最近加载耗时(ms): ${latestLoadTimeMs ?? '-'}`
+        ].join('\n');
+      }
+      setLoading(false);
+    }
+
+    function chunkById(id, chunkSize) {
+      return Math.floor(id / chunkSize);
+    }
+
+    /** 相对路径资源：先请求原路径，失败则再请求 data/ 下同名相对路径（不重复加 data/） */
+    function canTryDataFallback(url) {
+      if (!url || typeof url !== 'string') return false;
+      if (/^https?:\/\//i.test(url)) return false;
+      if (url.startsWith('data/')) return false;
+      return true;
+    }
+
+    async function fetchWithDataFallback(url) {
+      let res = await fetch(url);
+      if (res.ok) return { res, resolvedUrl: url };
+      if (!canTryDataFallback(url)) {
+        throw new Error(`${url} HTTP ${res.status}`);
+      }
+      const fb = 'data/' + url.replace(/^\.\//, '');
+      res = await fetch(fb);
+      if (res.ok) return { res, resolvedUrl: fb };
+      throw new Error(`${url} 与 ${fb} 均无法加载（后者 HTTP ${res.status}）`);
+    }
+
+    async function ensureMoleculeDetailLoaded(idx) {
+      if (!currentManifest) return;
+      const mol = molecules[idx];
+      if (!mol) return;
+      if (mol.__detailLoaded) return;
+      const chunkSize = currentManifest.layout.chunk_size;
+      const chunkIdx = chunkById(mol.id, chunkSize);
+      if (!moleculeChunkCache.has(chunkIdx)) {
+        const chunkMeta = currentManifest.layout.molecule_chunks.find(c => c.chunk_idx === chunkIdx);
+        if (!chunkMeta) return;
+        const { res } = await fetchWithDataFallback(chunkMeta.path);
+        const chunk = await res.json();
+        moleculeChunkCache.set(chunkIdx, chunk);
+      }
+      const chunk = moleculeChunkCache.get(chunkIdx);
+      const full = chunk.molecules.find(item => item.id === mol.id);
+      if (full) {
+        Object.assign(mol, full);
+        mol.__detailLoaded = true;
+      }
+    }
+
+    async function getNeighborsByMolId(molId) {
+      const manifestForNeighbors = currentManifest || neighborManifest;
+      if (!manifestForNeighbors || !manifestForNeighbors.layout.neighbor_chunks.length) return null;
+      const chunkSize = manifestForNeighbors.layout.chunk_size;
+      const chunkIdx = chunkById(molId, chunkSize);
+      if (!neighborChunkCache.has(chunkIdx)) {
+        const chunkMeta = manifestForNeighbors.layout.neighbor_chunks.find(c => c.chunk_idx === chunkIdx);
+        if (!chunkMeta) return null;
+        const { res } = await fetchWithDataFallback(chunkMeta.path);
+        const chunk = await res.json();
+        neighborChunkCache.set(chunkIdx, chunk);
+      }
+      const chunk = neighborChunkCache.get(chunkIdx);
+      return chunk.neighbors ? chunk.neighbors[String(molId)] : null;
+    }
+
+    async function loadDataset(sourcePath) {
+      currentDataset = sourcePath;
+      loadStartAt = performance.now();
+      setLoading(true, '正在加载数据...');
+      currentManifest = null;
+      neighborManifest = null;
+      moleculeChunkCache.clear();
+      neighborChunkCache.clear();
+      const isManifest = sourcePath.endsWith('.manifest.json');
+      if (!isManifest) {
+        const { res, resolvedUrl } = await fetchWithDataFallback(sourcePath);
+        currentDataset = resolvedUrl;
+        const json = await res.json();
+        applyLoadedDataset(json);
+        const manifestCandidate = datasetManifestPath(resolvedUrl);
+        if (manifestCandidate !== resolvedUrl) {
+          fetchWithDataFallback(manifestCandidate)
+            .then(({ res: manRes }) => manRes.json())
+            .then((manifest) => {
+              if (manifest && manifest.layout && Array.isArray(manifest.layout.neighbor_chunks)) {
+                neighborManifest = manifest;
+              }
+            })
+            .catch(() => {
+              neighborManifest = null;
+            });
+        }
+        return;
+      }
+
+      setLoading(true, '正在读取manifest...');
+      const { res: manRes, resolvedUrl: manifestResolved } = await fetchWithDataFallback(sourcePath);
+      currentDataset = manifestResolved;
+      const manifest = await manRes.json();
+      currentManifest = manifest;
+      neighborManifest = manifest;
+      const litePath = manifest.layout.lite_path;
+      setLoading(true, '正在分步加载（lite）...');
+      const { res: liteRes } = await fetchWithDataFallback(litePath);
+      const liteText = await liteRes.text();
+      const liteMolecules = parseJsonl(liteText).map((m, i) => ({
+        id: typeof m.id === 'number' ? m.id : i,
+        smiles: m.smiles,
+        labels: m.labels || [],
+        features: m.features || [],
+        label_nums: m.label_nums || 0,
+        properties: m.properties || { molecular_weight: 0, iupac_name: 'N/A' },
+        fp_coords: m.fp_coords || { pca: [0, 0, 0], tsne: [0, 0, 0], umap: [0, 0, 0] },
+        lb_coords: m.lb_coords || { pca: [0, 0, 0], tsne: [0, 0, 0], umap: [0, 0, 0] },
+        __detailLoaded: false
+      }));
+      applyLoadedDataset({
+        metadata: manifest.metadata,
+        molecules: liteMolecules
+      });
+      setLoading(false);
+    }
+
+    /** chunk_mode 下分片失败时：弹窗确认后回退单文件，不再静默 */
+    async function loadDatasetWithChunkFallback(sourcePath) {
+      try {
+        await loadDataset(sourcePath);
+      } catch (err) {
+        if (renderMode !== 'chunk_mode') throw err;
+        const legacy = datasetLegacyPath(sourcePath);
+        if (legacy === sourcePath) throw err;
+        const msg = err && err.message ? err.message : String(err);
+        const ok = window.confirm(
+          '分片数据加载失败：\n' +
+            msg +
+            '\n\n是否回退为单文件「' +
+            legacy +
+            '」？\n\n（回退后并非真正分片加载，性能实验中 chunk 对比会失真。）'
+        );
+        if (!ok) {
+          setLoading(false, '分片加载失败');
+          throw err;
+        }
+        await loadDataset(legacy);
+        const sel = document.getElementById('dataset-select');
+        if (sel) {
+          const match = Array.from(sel.options).find((o) => o.value === legacy);
+          if (match) sel.value = match.value;
+        }
+        window.alert(
+          '已用单文件「' +
+            legacy +
+            '」加载。\n当前不是分片模式；若要做 chunk 对比，请检查根目录下 manifest、lite、分片目录是否齐全。'
+        );
+      }
+    }
 
     // 标签专属颜色生成(旧版颜色)
     // function generateLabelColors(n) {
@@ -1254,44 +1762,10 @@
     }
     let labelColors = [];
 
-    // 读取数据
-    fetch('gs_lf_4983.json')
-      .then(res => res.json())
-      .then(json => {
-        data = json;
-        molecules = data.molecules;
-        labelNames = data.metadata.label_names;
-        //similarity = data.similarity_matrix;
-        labelColors = generateLabelColors(labelNames.length);
-        initUI();
-        updateCanvasLayout();
-        setTimeout(() => {
-          updateMolInfo(0);
-        }, 0);
-        renderCooccurrenceRanking();
-        // 先不渲染图表，等切换菜单再显示
-        // renderOverviewCharts();
-
-        // 统计前20高频标签
-        const labelCounts = labelNames.map((name, i) =>
-          molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0)
-        );
-        const labelStats = labelNames.map((name, i) => ({
-          label: name,
-          count: labelCounts[i],
-          idx: i
-        })).sort((a, b) => b.count - a.count);
-        topNLabelIdx = labelStats.slice(0, topN).map(x => x.idx);
-        // 新增：为每个标签分配优先级
-        labelPriority = Array(labelNames.length).fill(9999);
-        labelStats.forEach((obj, rank) => {
-          labelPriority[obj.idx] = rank;
-        });
-        renderAll3D();
-        const mwArr = molecules.map(m => m.properties.molecular_weight);
-        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
-        document.getElementById('loading-mask').style.display = 'none';
-      });
+    // 读取数据（默认单文件；分片见下拉「4983(分片)」+ chunk_mode）
+    loadDataset(currentDataset).catch(() => {
+      setLoading(false, '数据加载失败');
+    });
 
     // 主题切换：只切换整体背景和字体，不切换分子画板样式
     function setThemeClass() {
@@ -1430,7 +1904,7 @@
       document.getElementById('theme-btn').onclick = () => {
         theme = theme === "dark" ? "light" : "dark";
         setThemeClass();
-        renderAll3D();
+        render3D();
         updateMolInfo(selectedMol);
       };
       // 问号弹窗显示/隐藏
@@ -1475,11 +1949,7 @@
       // 特征筛选（动态生成12种结构特征标签）
       const featureFilterDiv = document.getElementById('feature-filter');
       featureFilterDiv.innerHTML = '';
-      const featureNames = data.metadata.feature_names || [
-        "sulfur", "carboxylic_acid", "alkyl_four_carbon_chain", "ester", "phenyl",
-        "eight_atoms_or_fewer", "ether", "aldehyde", "hitrile", "thirteen_atoms_or_more",
-        "aromatic_nitrogen", "amine"
-      ];
+      const featureNames = safeFeatureNames();
       featureNames.forEach((name, i) => {
         const tag = document.createElement('span');
         tag.className = 'tag';
@@ -1516,7 +1986,7 @@
               labelFilter = [idx];
             }
             syncLabelFilterUI();
-            renderAll3D();
+            render3D();
             renderCooccurrenceRanking();
             // 右侧云高亮
             updateMolInfo(selectedMol);
@@ -1596,57 +2066,50 @@
       };
 
       document.getElementById('dataset-select').onchange = function () {
-        document.getElementById('loading-mask').style.display = 'flex';
         currentDataset = this.value;
-        // 重新加载数据
-        fetch(currentDataset)
-          .then(res => res.json())
-          .then(json => {
-            data = json;
-            molecules = data.molecules;
-            labelNames = data.metadata.label_names;
-            //similarity = data.similarity_matrix;
-            labelColors = generateLabelColors(labelNames.length);
-            // 重新初始化所有UI和可视化
-            initUI();
-            updateCanvasLayout();
-            setTimeout(() => {
-              updateMolInfo(0);
-            }, 0);
-            renderCooccurrenceRanking();
-            renderOverviewCharts();
-            // 统计前20高频标签
-            const labelCounts = labelNames.map((name, i) =>
-              molecules.reduce((acc, m) => acc + (m.labels[i] ? 1 : 0), 0)
-            );
-            const labelStats = labelNames.map((name, i) => ({
-              label: name,
-              count: labelCounts[i],
-              idx: i
-            })).sort((a, b) => b.count - a.count);
-            topNLabelIdx = labelStats.slice(0, topN).map(x => x.idx);
-            labelPriority = Array(labelNames.length).fill(9999);
-            labelStats.forEach((obj, rank) => {
-              labelPriority[obj.idx] = rank;
-            });
-            renderAll3D();
-            const mwArr = molecules
-              .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
-              .map(m => m.properties.molecular_weight);
-            renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
-            document.getElementById('loading-mask').style.display = 'none';
-          });
+        const targetDataset = renderMode === 'chunk_mode'
+          ? datasetManifestPath(currentDataset)
+          : datasetLegacyPath(currentDataset);
+        currentDataset = targetDataset;
+        loadDatasetWithChunkFallback(targetDataset).catch(() =>
+          setLoading(false, '数据加载失败')
+        );
+      };
+      document.getElementById('render-mode-select').onchange = function () {
+        renderMode = this.value;
+        const targetDataset = renderMode === 'chunk_mode'
+          ? datasetManifestPath(currentDataset)
+          : datasetLegacyPath(currentDataset);
+        currentDataset = targetDataset;
+        loadDatasetWithChunkFallback(targetDataset)
+          .then(() => {
+            render3D();
+            runPerformanceSampling(20);
+          })
+          .catch(() => setLoading(false, '数据加载失败'));
+      };
+      document.getElementById('run-sample-btn').onclick = function () {
+        runPerformanceSampling(20);
+      };
+      document.getElementById('export-perf-btn').onclick = function () {
+        exportPerfLogsAsJson();
+      };
+      document.getElementById('clear-perf-btn').onclick = function () {
+        perfLogs.length = 0;
+        const div = document.getElementById('perf-summary');
+        if (div) div.textContent = '';
+        alert('已清空性能日志');
       };
       // 切换SMILES/散点
       document.getElementById('smiles-toggle-btn').onclick = function () {
         showSmiles = !showSmiles;
         updateCanvasLayout();
-        renderAll3D();
+        render3D();
       };
       document.getElementById('embedding-select').onchange = e => {
         currentEmbedding = e.target.value;
         updateCanvasLayout();
-        renderAll3D();
+        render3D();
       };
 
     }
@@ -1729,7 +2192,7 @@
             enlargedCanvas = i;
           }
           updateCanvasLayout();
-          renderAll3D();
+          render3D();
         };
         div.appendChild(btn);
         // label层
@@ -1762,6 +2225,7 @@
       for (let i = 0; i < 2; ++i) {
         const container = document.getElementById(`main-3d-${i}`);
         if (container && container._renderer) {
+          container._loopToken = (container._loopToken || 0) + 1;
           container._renderer.dispose();
           container._renderer.forceContextLoss && container._renderer.forceContextLoss();
           container._renderer.domElement && container._renderer.domElement.remove();
@@ -1776,22 +2240,30 @@
       }
     }
 
+    function computeFilteredIdx() {
+      return molecules.map((mol, i) => i)
+        .filter(i => {
+          const mol = molecules[i];
+          if (!mol.properties) return false;
+          if ((mol.properties.molecular_weight || 0) > mwMax) return false;
+          return true;
+        })
+        .slice(0, molLimit);
+    }
+
     // 渲染单个embedding画布
     function render3DFor(embedding, canvasId, labelLayerId, embeddingType = currentEmbeddingType) {
       // 清理旧canvas
       const container = document.getElementById(canvasId);
+      if (!container) return;
+      container._loopToken = (container._loopToken || 0) + 1;
+      const loopToken = container._loopToken;
       // 移除旧canvas
       Array.from(container.getElementsByTagName('canvas')).forEach(c => c.remove());
       // 清理label
       const labelLayer = document.getElementById(labelLayerId);
       labelLayer.innerHTML = '';
-      filteredIdx = molecules.map((mol, i) => i)
-        .filter(i => {
-          const mol = molecules[i];
-          if (mol.properties.molecular_weight > mwMax) return false;
-          return true;
-        })
-        .slice(0, molLimit);
+      filteredIdx = computeFilteredIdx();
       // 销毁旧renderer，防止WebGL context 泄漏
       if (container._renderer) {
         container._renderer.dispose();
@@ -1805,6 +2277,10 @@
       renderer.setClearColor(theme === "dark" ? 0x000000 : 0xf7f7fa, 1);
       renderer.setSize(container.clientWidth, container.clientHeight);
       container.appendChild(renderer.domElement);
+      container._renderer = renderer;
+      renderer.domElement.addEventListener('webglcontextlost', function () {
+        performanceLogger.onWebglContextLost();
+      });
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(60, renderer.domElement.width / renderer.domElement.height, 0.1, 1000);
@@ -1921,9 +2397,14 @@
       // 创建label div（SMILES或散点）
       filteredIdx.forEach((idx, i) => {
         const mol = molecules[idx];
-        const emb = mol[embeddingType][embedding];
         const labelDiv = document.createElement('div');
         labelDiv.className = 'point-label';
+        labelDiv.style.display = 'none';
+        labelDiv.style.padding = '0';
+        labelDiv.style.border = 'none';
+        labelDiv.style.background = 'transparent';
+        labelDiv.style.opacity = '0.95';
+        labelDiv.style.transform = 'translate(-50%, -50%)';
 
         // 重新计算 isSelected 和 isCooccur
         let isSelected = false, isCooccur = false;
@@ -1938,29 +2419,8 @@
           isSelected = true;
           isCooccur = false;
         }
-        if (showSmiles) {
-          labelDiv.textContent = mol.smiles;
-          labelDiv.style.display = 'block';
-        } else {
-          labelDiv.textContent = '';
-          labelDiv.style.display = 'none';
-        }
-
-        // 高亮/灰色逻辑
-        if (particleData[i].isCooccur) {
-          labelDiv.style.boxShadow = '0 0 0 3px #ff5e7e99';
-          labelDiv.style.border = '2px solid #ff5e7e';
-        } else if (!isSelected) {
-          labelDiv.style.opacity = '0.25';
-          labelDiv.style.filter = 'grayscale(0.7)';
-          labelDiv.style.border = '';
-          labelDiv.style.boxShadow = '';
-        } else {
-          labelDiv.style.border = '';
-          labelDiv.style.boxShadow = '';
-          labelDiv.style.opacity = '0.75';
-          labelDiv.style.filter = '';
-        }
+        labelDiv.dataset.isSelected = isSelected ? '1' : '0';
+        labelDiv.dataset.isCooccur = isCooccur ? '1' : '0';
 
         labelDiv.style.pointerEvents = 'none';
         labelLayer.appendChild(labelDiv);
@@ -2070,7 +2530,74 @@
       }
 
       // 动画循环
+      let frameCounter = 0;
+      function updateLabelsByMode() {
+        if ((container._loopToken || 0) !== loopToken) return;
+        const distance = camera.position.distanceTo(controls.target);
+        const lodLevel = getLodLevelByDistance(distance);
+        if (renderMode === 'hybrid_lod' && lodLevel !== lodLevelGlobal) {
+          lodLevelGlobal = lodLevel;
+        }
+
+        let maxImageCount = 0;
+        if (renderMode === 'full_image') {
+          maxImageCount = Math.min(particleData.length, 320);
+        } else if (renderMode === 'hybrid_lod') {
+          if (lodLevel === 'mid') maxImageCount = 50;
+          if (lodLevel === 'near') maxImageCount = 140;
+        }
+        const candidateOrder = particleData
+          .map((p, i) => ({ i, score: (p.isCooccur ? 10000 : 0) + p.size }))
+          .sort((a, b) => b.score - a.score);
+        const visibleImageSet = new Set(candidateOrder.slice(0, maxImageCount).map(x => x.i));
+
+        for (let i = 0; i < particleData.length; ++i) {
+          const p = particleData[i];
+          const labelDiv = p.labelDiv;
+          if (!labelDiv) continue;
+          const mol = molecules[p.idx];
+          if (!mol) continue;
+
+          if (renderMode === 'chunk_mode') {
+            if (showSmiles) {
+              labelDiv.style.display = 'block';
+              if (labelDiv.dataset.mode !== 'smiles') {
+                labelDiv.dataset.mode = 'smiles';
+                labelDiv.style.padding = '1px 7px';
+                labelDiv.style.background = 'rgba(255,255,255,0.82)';
+                labelDiv.style.border = '1px solid #eaeaea';
+                labelDiv.style.borderRadius = '8px';
+                labelDiv.style.filter = '';
+                labelDiv.textContent = mol.smiles;
+              }
+            } else {
+              labelDiv.style.display = 'none';
+            }
+            continue;
+          }
+
+          if (!visibleImageSet.has(i)) {
+            labelDiv.style.display = 'none';
+            continue;
+          }
+          labelDiv.style.display = 'block';
+          const imageSize = lodLevel === 'near' ? 40 : 28;
+          const renderKey = `${mol.id}-${imageSize}`;
+          if (labelDiv.dataset.mode !== renderKey) {
+            const lodCanvasId = `${canvasId}-lod-${mol.id}-${imageSize}-${i}`;
+            labelDiv.dataset.mode = renderKey;
+            labelDiv.style.padding = '0';
+            labelDiv.style.background = 'transparent';
+            labelDiv.style.border = 'none';
+            labelDiv.innerHTML = `<canvas id="${lodCanvasId}" width="${imageSize}" height="${imageSize}" style="width:${imageSize}px;height:${imageSize}px;border-radius:6px;background:#fff;border:1px solid #ddd;"></canvas>`;
+            drawSmilesToLodCanvas(mol.smiles, lodCanvasId, imageSize);
+          }
+        }
+      }
+
       function animate() {
+        if ((container._loopToken || 0) !== loopToken) return;
+        const frameStart = performance.now();
         controls.update();
         renderer.render(scene, camera);
         if (particleData.length) {
@@ -2089,12 +2616,17 @@
               if (lx > w - 10) lx = w - 10;
               if (ly < 0) ly = 0;
               if (ly > h - 10) ly = h - 10;
-              labelDiv.style.left = `${lx - 10}px`;
-              labelDiv.style.top = `${ly - 10}px`;
+              labelDiv.style.left = `${lx}px`;
+              labelDiv.style.top = `${ly}px`;
 
             }
           }
         }
+        frameCounter += 1;
+        if (frameCounter % 5 === 0) {
+          updateLabelsByMode();
+        }
+        performanceLogger.onFrame(performance.now() - frameStart);
         requestAnimationFrame(animate);
       }
       animate();
@@ -2108,13 +2640,16 @@
       const mwArr = molecules
         .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
         .map(m => m.properties.molecular_weight);
-      renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      if (mwArr.length) {
+        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      }
     }
 
     // 右侧分子详情面板
-    function updateMolInfo(idx) {
+    async function updateMolInfo(idx) {
       if (!molecules || !molecules[idx]) return; // 防止未加载或越界
       selectedMol = idx;
+      await ensureMoleculeDetailLoaded(idx);
       const mol = molecules[idx];
       document.getElementById('smiles-label').textContent = mol.smiles;
       document.getElementById('iupac-label').textContent = mol.properties.iupac_name || 'N/A';
@@ -2154,18 +2689,20 @@
           tagCloud.appendChild(span);
         }
       });
-      // 推荐
-      //renderSimList('structural-sim', similarity.structural[idx], 'Tanimoto');
-      //renderSimList('label-sim', similarity.label[idx], 'Jaccard');
+      // 推荐（TopK邻居，分片按需加载）
+      const neighbors = await getNeighborsByMolId(mol.id);
+      if (neighbors) {
+        renderNeighborList('structural-sim', neighbors.structural || []);
+        renderNeighborList('label-sim', neighbors.label || []);
+      } else {
+        renderNeighborList('structural-sim', []);
+        renderNeighborList('label-sim', []);
+      }
 
       // 特征标签云
       const featureTagCloud = document.getElementById('feature-tag-cloud');
       featureTagCloud.innerHTML = '';
-      const featureNames = data.metadata.feature_names || [
-        "sulfur", "carboxylic_acid", "alkyl_four_carbon_chain", "ester", "phenyl",
-        "eight_atoms_or_fewer", "ether", "aldehyde", "hitrile", "thirteen_atoms_or_more",
-        "aromatic_nitrogen", "amine"
-      ];
+      const featureNames = safeFeatureNames();
       mol.features.forEach((v, i) => {
         if (v) {
           const span = document.createElement('span');
@@ -2184,7 +2721,7 @@
               featureFilter.push(i);
             }
             syncFeatureFilterUI();
-            renderAll3D();
+            render3D();
             renderCooccurrenceRanking();
             updateMolInfo(selectedMol);
           };
@@ -2266,27 +2803,30 @@
         .attr('fill', '#222')
         .text(label || '共现数');
     }
-    // 推荐列表加2D分子图
-    function renderSimList(id, simArr, type) {
+    // 推荐列表加2D分子图（TopK邻居）
+    function renderNeighborList(id, neighbors) {
       const ul = document.getElementById(id);
+      if (!ul) return;
       ul.innerHTML = '';
-      let arr = simArr.map((v, i) => ({ i, v }))
-        .filter(x => x.i !== selectedMol)
-        .sort((a, b) => b.v - a.v)
-        .slice(0, 5);
-      arr.forEach(obj => {
+      if (!neighbors || !neighbors.length) {
+        ul.innerHTML = '<li style="opacity:0.7;">暂无近邻数据</li>';
+        return;
+      }
+      neighbors.slice(0, 5).forEach(obj => {
+        const mol = molecules[obj.id];
+        if (!mol) return;
         const li = document.createElement('li');
         // 增加canvas用于2D分子图
-        li.innerHTML = `<canvas class="sim-mol2d" id="${id}-mol2d-${obj.i}" width="38" height="28"></canvas>
-          <span>${molecules[obj.i].smiles}</span>
-          <span class="sim-score">${obj.v.toFixed(2)}</span>
-           <button class="add-compare-btn" title="加入对比" onclick="event.stopPropagation();addToCompare(${obj.i})">+</button>`;
-        li.onclick = () => updateMolInfo(obj.i);
+        li.innerHTML = `<canvas class="sim-mol2d" id="${id}-mol2d-${obj.id}" width="38" height="28"></canvas>
+          <span>${mol.smiles}</span>
+          <span class="sim-score">${Number(obj.score).toFixed(2)}</span>
+           <button class="add-compare-btn" title="加入对比" onclick="event.stopPropagation();addToCompare(${obj.id})">+</button>`;
+        li.onclick = () => updateMolInfo(obj.id);
         ul.appendChild(li);
         // 渲染2D分子图
-        SmilesDrawer.parse(molecules[obj.i].smiles, function (tree) {
+        SmilesDrawer.parse(mol.smiles, function (tree) {
           const drawer = new SmilesDrawer.Drawer({ width: 38, height: 28, theme: 'light', padding: 2 });
-          drawer.draw(tree, `${id}-mol2d-${obj.i}`, 'light', false);
+          drawer.draw(tree, `${id}-mol2d-${obj.id}`, 'light', false);
         });
       });
     }
@@ -3291,7 +3831,7 @@
             syncLabelFilterUI();
             render3D();
             renderCooccurrenceRanking();
-            renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+            updateLegendByCurrentFilter();
           };
           isSelected = labelFilter.length === 1 && labelFilter[0] === item.i && featureFilter.length === 1 && featureFilter[0] === item.j;
         }
@@ -3306,6 +3846,7 @@
         return;
       }
       let html = '';
+      const featureNames = safeFeatureNames();
       compareList.forEach(idx => {
         const mol = molecules[idx];
         html += `
@@ -3316,7 +3857,7 @@
         <div style="font-family:'JetBrains Mono';font-size:1.01em;font-weight:700;color:#6c4bdb;margin-bottom:0.3em;word-break:break-all;">${mol.smiles}</div>
         <div style="font-size:0.85em;color:#888;margin-bottom:0.3em;">分子量: ${mol.properties.molecular_weight}</div>
         <div class="tag-cloud smell">${mol.labels.map((v, i) => v ? `<span class="tag" style="border-color:${labelColors[i]};color:${labelColors[i]};">${labelNames[i]}</span>` : '').join('')}</div>
-        <div class="tag-cloud feature">${mol.features.map((v, i) => v ? `<span class="tag">${(data.metadata.feature_names[i] || i).replace(/_/g, ' ')}</span>` : '').join('')}</div>
+        <div class="tag-cloud feature">${mol.features.map((v, i) => v ? `<span class="tag">${(featureNames[i] || i).replace(/_/g, ' ')}</span>` : '').join('')}</div>
       </div>`;
       });
       container.innerHTML = html;
@@ -3342,7 +3883,9 @@
       const mwArr = molecules
         .filter((mol, i) => filteredIdx ? filteredIdx.includes(i) : true)
         .map(m => m.properties.molecular_weight);
-      renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      if (mwArr.length) {
+        renderLegend(labelColors, labelNames, Math.min(...mwArr), Math.max(...mwArr));
+      }
     }
     // 挂到window，确保HTML onclick能访问
     window.enlargeChart = enlargeChart;

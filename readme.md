@@ -4,17 +4,50 @@
 
 本项目为分子结构与气味的交互可视化平台，基于 Three.js、D3.js 等可视化库，支持分子结构空间与气味标签空间三维降维可视化、标签/特征共现分析、数据概览、分子对比、信息检索等多种功能，你可以在分子的宇宙中尽情探索，感受科学的未知和奇妙。
 
-## 部署与运行
+## 快速开始（先看这里）
 
-1. 在线访问
-   1. https://czx0v0.github.io/HTML/molecular_universe.html
-   2. 可直接点击上面的地址游玩，由于Github上传文件无法超过100MB，上面网站中的分子数目最多为1024。（首次加载速度可能较慢），如果出现渲染问题可以尝试重新刷新页面。
-2. 本地运行
-   1. 克隆本项目到本地。
-   2. 数据文件（如 gs_lf_1024.json）放在data目录。
-   3. molecular_universe.html放在项目根目录。
-   4. 启动本地静态服务器（推荐 VSCode Live Server 或 Python http.server）：
-   5. 在浏览器访问对应网址。
+### 1) 在线访问
+
+- 地址：[https://czx0v0.github.io/HTML/molecular_universe.html](https://czx0v0.github.io/HTML/molecular_universe.html)
+- 说明：GitHub 单文件大小有限制，在线版通常只放较小数据集。
+
+### 2) 本地运行
+
+1. 克隆项目并进入根目录（`molecular_universe.html` 同级目录）。
+2. 启动静态服务（任选其一）：
+  - VSCode Live Server
+  - `python -m http.server 8000`
+3. 浏览器访问本地地址（如 `http://localhost:8000/molecular_universe.html`）。
+
+### 3) 数据生成
+
+**约定：与 `molecular_universe.html` 同级（项目根目录）**，例如：
+
+- `gs_lf_4983.json`（单文件）
+- `gs_lf_4983.manifest.json` + `gs_lf_4983.molecules-lite.jsonl` + `gs_lf_4983.molecules/` + `gs_lf_4983.neighbors/`（分片）
+
+生成到根目录（推荐，与前端下拉一致）：
+
+```bash
+python "./preprocess/data_preprocess.py" --size 4983 --output-dir "."
+```
+
+若输出到 `./data`：脚本会把 manifest 内路径写成带 `data/` 前缀；或保持无前缀时，**前端会先请求根目录，失败则自动再请求 `data/` 下同一路径**（单文件、manifest、lite、分片 chunk 均适用）。
+
+示例（生成多档数据）：
+
+```bash
+python "./preprocess/data_preprocess.py" --size 512 --output-dir "."
+python "./preprocess/data_preprocess.py" --size 1024 --output-dir "."
+python "./preprocess/data_preprocess.py" --size 2048 --output-dir "."
+```
+
+### 4) 数据和前端数据集下拉框同步
+
+- 当前是“**半自动**”：
+  - 如果你生成的是已有命名（如 `gs_lf_1024.json`），前端下拉框会直接可用。
+  - 如果是新尺寸（如 `gs_lf_3000.json`），需要在前端下拉框里新增一个选项。
+- 分片模式（manifest）默认优先读取 `gs_lf_4983.manifest.json`，不存在时回退到 `gs_lf_4983.json`。
 
 ## 主要功能
 
@@ -74,12 +107,11 @@
 ## 数据集
 
 1. 原始数据集：[OpenPOM](https://github.com/BioMachineLearning/openpom/blob/main/openpom/data/curated_datasets/curated_GS_LF_merged_4983.csv)
-2. 主数据文件：在data文件夹中。
+2. 主数据文件：在根目录文件夹中。
 3. json数据格式说明：
-
-   1. labels/features：与 label_names/feature_names 顺序一一对应。
-   2. fp_coords/lb_coords：结构/标签空间的降维坐标。
-   3. 详细格式如下：
+  1. labels/features：与 label_names/feature_names 顺序一一对应。
+  2. fp_coords/lb_coords：结构/标签空间的降维坐标。
+  3. 详细格式如下：
 
 ```json
 {
@@ -130,12 +162,29 @@
 }
 ```
 
-2. 数据转换
+1. 数据转换（CSV -> JSON/分片）
+  1. 见 `./preprocess/data_preprocess.py`，将原始CSV转换为前端可视化数据。
+  2. 推荐用法（输出到项目根目录，便于前端直接读取）：
 
-   1. 见 `./preprocess/data_preprocess.py`文件，用于将csv数据转化为json数据，借助rdkit、pubchempy等。
-   2. 使用方式：
-      1. 可直接运行py文件，默认生成的数据大小为512个分子。
-      2. 如果需要更改生成数据大小，可传入参数运行，如 `python3 data_preprocess.py --size 250`。
+```bash
+python "./preprocess/data_preprocess.py" --size 2048 --output-dir "."
+```
+
+1. 常用参数说明：
+  - `--size`：处理分子数量
+  - `--output-dir`：输出目录（建议 `"."`）
+  - `--chunk-size`：分片大小（manifest模式）
+  - `--topk`：每个分子的近邻数量
+  - `--output-mode`：`dual/single/chunk`
+  - `--skip-neighbors`：跳过近邻计算（更快）
+  - `--skip-shards`：只输出单文件 JSON（兼容模式）
+  - `--skip-full-json`：不输出单文件 JSON
+2. 输出产物（示例）：
+  - `gs_lf_2048.json`（单文件）
+  - `gs_lf_2048.manifest.json`（分片入口）
+  - `gs_lf_2048.molecules-lite.jsonl`
+  - `gs_lf_2048.molecules/chunk_0000.json`
+  - `gs_lf_2048.neighbors/chunk_0000.json`
 
 ### 依赖环境
 
@@ -151,7 +200,7 @@
 - Embedding Projector
 - [OpenPOM - Open Principal Odor Map, Aryan Amit Barsainyan and Ritesh Kumar and Pinaki Saha and Michael Schmuker](https://github.com/BioMachineLearning/openpom)
 - A Principal Odor Map Unifies Diverse Tasks in Human Olfactory Perception.
-  Science381,999-1006(2023).DOI: 10.1126/science.ade4401
+Science381,999-1006(2023).DOI: 10.1126/science.ade4401
 - 其他开源数据与可视化工具的贡献者
 
 ### 更新日志
@@ -178,10 +227,54 @@
 
 - 修复github pages和本地的json数据存放位置不一致导致的数据读取失败问题。
 
+#### 2026.03.21(v0.2.4)
+
+- **数据与预处理**：`data_preprocess` 支持 `--output-mode`（dual/single/chunk）、`--skip-full-json`；manifest 内 lite/分片路径在输出到子目录时自动带相对前缀，避免静态站路径错位。
+- **相似度存储**：延续 TopK 邻居分片（结构 Tanimoto + 标签 Jaccard），替代全量相似矩阵，控制体积与加载成本。
+- **前端加载**：根目录请求失败时自动再试 `data/` 同一路径；默认数据集为 **4983 分片 manifest**，默认渲染模式为 **chunk_mode**。
+- **相似推荐**：单文件模式下可后台挂载同名 manifest 的邻居分片，使 `hybrid_lod` / `full_image` 也能按需展示推荐（仍依赖邻居产物）。
+
 ### 后续计划
 
 1. 支持深度学习embeddings和自定义文件可视化。
-2. 结合轻量索引和按需加载引入更多数据。
-3. 支持更多类型的科学数据如谱图文件可视化。
-4. 实现更高效的相似检索算法。
-5. 接入大语言模型API。
+2. 支持更多类型的科学数据如谱图文件可视化。
+3. 接入大语言模型API。
+
+## 性能实验
+
+1. 模式定义：
+  - `full_image`：全量分子图压力模式（强调渲染开销）
+  - `hybrid_lod`：LOD模式（平衡可读性与性能）
+  - `chunk_mode`：分片加载模式（强调加载与内存）
+2. 采样方式：
+  - 每个模式点击“采样20秒”，按相同交互脚本执行（缩放、筛选、详情）。
+3. 导出：
+  - 点击“导出性能日志JSON”，得到同口径日志。
+4. 建议指标：
+  - `render_fps_avg/p95`
+  - `frame_time_ms_p50/p95/p99`
+  - `long_task_count/total_ms`
+  - `memory_peak_mb`
+  - `webgl_context_lost_count`
+5. 汇总报告（ `perf_report.py`）：
+
+```bash
+python "./preprocess/perf_report.py" --inputs "./perf_run.json" --output "./data/perf_report.md"
+```
+
+`--output` 可写任意路径；写到 `data/` 时若目录不存在会自动创建。可把多次导出合并进同一个 JSON 或传多个 `--inputs` 文件。
+
+## 数据标准接口（本地 preprocess）
+
+推荐命令（统一接口）：
+
+```bash
+python "./preprocess/data_preprocess.py" --size 2048 --output-dir "." --output-mode dual
+```
+
+`--output-mode` 说明：
+
+- `dual`：单文件 + 分片（推荐，实验默认）
+- `single`：仅单文件
+- `chunk`：仅分片
+
